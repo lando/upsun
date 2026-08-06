@@ -1,0 +1,11 @@
+vendor
+files
+data
+private
+.platform/local
+
+*.sql
+*.tar.gz
+*.tar
+
+.DS_Store

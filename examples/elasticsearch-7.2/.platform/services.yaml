@@ -1,0 +1,7 @@
+searchelastic:
+  type: elasticsearch:7.2
+searchelastic-plugin:
+  type: elasticsearch:7.2
+  configuration:
+        plugins:
+            - mapper-size

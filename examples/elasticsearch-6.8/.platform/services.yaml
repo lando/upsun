@@ -1,0 +1,7 @@
+searchelastic:
+  type: elasticsearch:6.8
+searchelastic-plugin:
+  type: elasticsearch:6.8
+  configuration:
+        plugins:
+            - mapper-size

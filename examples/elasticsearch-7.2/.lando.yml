@@ -1,0 +1,10 @@
+name: lando-platformsh-elasticsearch-7.2
+recipe: platformsh
+config:
+  id: DISCONNECTED
+
+
+# This is important because it lets lando know to test against the plugin in this repo
+# DO NOT REMOVE THIS!
+plugins:
+  "@lando/platformsh": ./../../

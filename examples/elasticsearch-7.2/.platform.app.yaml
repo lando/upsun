@@ -1,0 +1,12 @@
+name: app
+type: "php:7.3"
+build:
+  flavor: composer
+web:
+  locations:
+    "/":
+      root: "."
+      passthru: "/index.php"
+relationships:
+  elasticsearch: "searchelastic:elasticsearch"
+  elasticsearch-plugin: "searchelastic-plugin:elasticsearch"
