@@ -3,10 +3,10 @@ Platform.sh Basics Example
 
 This example exists primarily to test the core configuration options of the recipe
 
-* [Recipe config](hhttps://docs.lando.dev/config/platformsh.html#configuration)
-* [Multiapp config](https://docs.lando.dev/config/platformsh.html#multiple-applications)
-* [Overriding config](https://docs.lando.dev/config/platformsh.html#overriding-config)
-* [Environment variables](https://docs.lando.dev/config/platformsh.html#environment-variables)
+* [Recipe config](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md)
+* [Multiapp config](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md#multiple-applications)
+* [Overriding config](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md#overriding-config)
+* [Environment variables](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md#environment-variables)
 
 Start up tests
 --------------

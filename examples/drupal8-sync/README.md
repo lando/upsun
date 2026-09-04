@@ -3,7 +3,7 @@ Platform.sh Drupal 8 Integration Example
 
 This example exists primarily to test `lando init`, `lando start` and `lando pull` for a basic Drupal 8 site.
 
-* [Platform.sh Recipe](https://docs.lando.dev/config/platformsh.html)
+* [Upsun Fixed recipe](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md)
 
 Start up tests
 --------------

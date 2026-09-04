@@ -2,13 +2,11 @@
 
 Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
 
-**Phase-1:** Fixed config + `platform` CLI / `PLATFORMSH_CLI_TOKEN`. Flex (`.upsun`) is not supported.
-
-This release loads `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`. If `.upsun/config.yaml` is present the plugin exits with a hard error. An empty `.upsun/` directory is ignored.
+**Phase-0/1 is not runtime OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. OPEN / `PLATFORM_RELATIONSHIPS` at runtime is **deferred** until a live Docker proof exists.
 
 Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
 
-## Parity floor
+## Seed SHA (not a runtime claim)
 
 Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) tip:
 
@@ -16,30 +14,32 @@ Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) tip:
 
 That SHA **is** the current `lando/platformsh` `main` tip. It is **50 commits ahead** of tag [`v0.10.0`](https://github.com/lando/platformsh/releases/tag/v0.10.0) (`111845db63b31092e80ef9f5386b97c31eba2987`). The seed `package.json` historically said `0.9.0` (both at the tip and at `v0.10.0`).
 
-That SHA is the behavioral floor for Fixed local runtime: config load, service builders, BOOT/BUILD/START/OPEN, `PLATFORM_RELATIONSHIPS`, and `platform` CLI pull/push/ssh.
+This is the code we forked. It is **not** a claim that BOOT/BUILD/START/OPEN or `PLATFORM_RELATIONSHIPS` work on current Docker.
 
 Review artifacts:
 
-* [(5) Parity floor SHA](docs/parity/05-parity-floor-sha.md)
+* [(5) Seed SHA](docs/parity/05-parity-floor-sha.md)
 * [(6) Image spike](docs/parity/06-image-spike.md)
-* [(7) Parity checklist](docs/parity/07-parity-checklist.md)
+* [(7) Checklist](docs/parity/07-parity-checklist.md)
 * [(8) platformsh-client call-site map](docs/parity/08-platformsh-client-map.md)
 
-## What works (Fixed)
+## What Phase-0/1 changes (code)
 
-* Recipe `upsun` (deprecated alias: `platformsh`)
-* Package `@lando/upsun`
+* Package `@lando/upsun`, recipe `upsun` (deprecated alias: `platformsh`)
+* Fixed gate: `.upsun/config.yaml` is a hard abort (`warnings.flexUnsupported` + `lando.log.error`). Empty `.upsun/` is ignored.
+* Fixed config load: `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`
+* Auth path preserved: container CLI is `platform` with `PLATFORMSH_CLI_TOKEN`
 * Token cache `upsun.tokens` with **read-old-write-new** from `platformsh.tokens`
 * Host CLI tokens from `~/.platformsh/cache/tokens`
-* Container CLI is `platform` with `PLATFORMSH_CLI_TOKEN`
-* `lando platform` tooling, `lando pull` / `lando push`, ssh wrap that preserves `PLATFORM_*`
 * Init still uses pinned `platformsh-client@0.1.230` (`getAccountInfo`, `getProject`, `addSshKey`, `getAccessToken`)
 * Flags `--upsun-auth` / `--upsun-site` plus deprecated `--platformsh-auth` / `--platformsh-site`
+* `lando platform` / pull / push / ssh scripts still call `platform` (code kept, not runtime-proven)
 
-## What does not work
+## What is deferred
 
-* **Flex** — if `.upsun/config.yaml` exists, the plugin fails with: `Flex unsupported until Phase 3; Fixed-only.`
-* No Flex OPEN or Flex relationship rewriting
+* **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — code path kept from the seed SHA; **defer** until `docker pull` + `lando start` on a Fixed PHP+DB example
+* Flex OPEN or Flex relationship rewriting — hard error until Phase 3
+* Leia / Docker example jobs — quarantined on PRs until that spike exists
 * Full Docker OPEN against `docker.registry.platform.sh` is **not verified** here (no Docker daemon). Registry spike: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). That is not an OPEN proof.
 
 ## Migration from `@lando/platformsh`
@@ -63,14 +63,14 @@ Existing Lando token caches named `platformsh.tokens` are read automatically. Ne
 
 ## Manual test plan
 
-Needs Lando + Docker on a workstation. This environment could not run a full OPEN cycle.
+Needs Lando + Docker on a workstation. This environment could not run OPEN.
 
 1. **Init (token)** — `lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site <name>`
 2. **Init (cwd Fixed PHP + MariaDB)** — copy `examples/mariadb-10.4`, set `recipe: upsun`, `lando start`
 3. **`lando platform`** — `lando platform -V` / `auth:info` (uses `PLATFORMSH_CLI_TOKEN`)
 4. **Pull dry-run** — `lando pull -r none -m none` (lists remotes; no token → auth error, expected)
-5. **Flex hard error** — add `.upsun/config.yaml` and confirm start/init fails with the Phase 3 message
-6. **Empty `.upsun/`** — directory only, Fixed app still starts
+5. **Flex hard abort** — add `.upsun/config.yaml` and confirm start/init fails with the Phase 3 warning + error
+6. **Empty `.upsun/`** — directory only, Fixed yaml still loads
 
 ## Development
 
@@ -79,7 +79,7 @@ npm install
 npm test          # lint + unit tests
 ```
 
-Leia / Docker OPEN tests (`npm run test:leia`) need live Platform images and are not claimed green here.
+Leia / Docker OPEN tests (`npm run test:leia`) are quarantined until a live image spike.
 
 ## Maintainers
 
