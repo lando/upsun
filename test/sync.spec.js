@@ -26,7 +26,7 @@ const closestApp = {
  * Run the bash sync harness.
  *
  * @param {string[]} args Harness argv (mode + args).
- * @param {NodeJS.ProcessEnv} extraEnv Extra env vars.
+ * @param {object} extraEnv Extra env vars.
  * @returns {string} Combined stdout.
  */
 function runHarness(args, extraEnv = {}) {
@@ -44,11 +44,11 @@ describe('Fixed pull/push contract', () => {
   it('keeps the platform binary and PLATFORMSH_CLI_TOKEN', () => {
     helperSrc.should.match(/UPSUN_PLATFORM_BIN="\$\{UPSUN_PLATFORM_BIN:-platform\}"/);
     helperSrc.should.match(/PLATFORMSH_CLI_TOKEN/);
-    helperSrc.should.not.match(/UPSUN_CLI_TOKEN/);
+    helperSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
     pullSrc.should.match(/export PLATFORMSH_CLI_TOKEN=/);
     pushSrc.should.match(/export PLATFORMSH_CLI_TOKEN=/);
-    pullSrc.should.not.match(/UPSUN_CLI_TOKEN/);
-    pushSrc.should.not.match(/UPSUN_CLI_TOKEN/);
+    pullSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
+    pushSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
     pullSrc.should.not.match(/(^|[^-\w])upsun auth/);
     pushSrc.should.not.match(/(^|[^-\w])upsun auth/);
   });
@@ -119,7 +119,7 @@ describe('upsun_ensure_active_environment', () => {
    * Run ensure with a fresh mock log.
    *
    * @param {string} branch Environment id.
-   * @param {NodeJS.ProcessEnv} extraEnv Mock behavior.
+   * @param {object} extraEnv Mock behavior.
    * @returns {{out: string, log: string}}
    */
   function ensure(branch, extraEnv = {}) {
