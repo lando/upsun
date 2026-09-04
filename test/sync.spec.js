@@ -112,6 +112,92 @@ describe('upsun_parse_sync_args', () => {
     runHarness(['parse', '--auth', 'tok-space']).should.match(/AUTH=tok-space/);
     runHarness(['parse', '--auth=tok-eq']).should.match(/AUTH=tok-eq/);
   });
+
+  it('leaves relationships and mounts empty when -r / -m are omitted', () => {
+    const out = runHarness(['parse']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('parses literal none for -r / -m (skip is applied later)', () => {
+    const out = runHarness(['parse', '-r', 'none', '-m', 'none']);
+    out.should.match(/RELS=none/);
+    out.should.match(/MOUNTS=none/);
+  });
+
+  it('skips empty -r / -m values', () => {
+    const out = runHarness(['parse', '-r', '', '-m', '']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('splits comma-separated -r / -m values', () => {
+    const out = runHarness(['parse', '-r', 'database,migrate', '-m', 'tmp,private']);
+    out.should.match(/RELS=database migrate/);
+    out.should.match(/MOUNTS=tmp private/);
+  });
+
+  it('parses -e / -p short forms and --environment alias', () => {
+    const out = runHarness(['parse', '-p', 'proj9', '-e', 'feat', '--environment', 'other']);
+    out.should.match(/PROJECT=proj9/);
+    out.should.match(/BRANCH=other/);
+    out.should.match(/ENV_EXPLICIT=1/);
+  });
+
+  it('ignores unknown flags and leftover positionals', () => {
+    const out = runHarness(['parse', 'positional', '-r', 'database', '--wat', 'nope', '-m', 'tmp']);
+    out.should.match(/RELS=database/);
+    out.should.match(/MOUNTS=tmp/);
+  });
+
+  it('stops parsing after --', () => {
+    const out = runHarness(['parse', '-r', 'database', '--', '--mount=tmp']);
+    out.should.match(/RELS=database/);
+    out.should.match(/^MOUNTS=$/m);
+  });
+});
+
+describe('empty / none -r / -m skip', () => {
+  it('treats omitted -r / -m as warn-list (no auto-primary)', () => {
+    const out = runHarness(['skip-none']);
+    out.should.match(/RELS_COUNT=0/);
+    out.should.match(/MOUNTS_COUNT=0/);
+    out.should.match(/RELS_ACTION=warn-list/);
+    out.should.match(/MOUNTS_ACTION=warn-list/);
+  });
+
+  it('treats -r none / -m none as warn-list skip', () => {
+    const out = runHarness(['skip-none', '-r', 'none', '-m', 'none']);
+    out.should.match(/RELS_COUNT=0/);
+    out.should.match(/MOUNTS_COUNT=0/);
+    out.should.match(/RELS_ACTION=warn-list/);
+    out.should.match(/MOUNTS_ACTION=warn-list/);
+  });
+
+  it('keeps a real -r / -m as sync', () => {
+    const out = runHarness(['skip-none', '-r', 'database', '-m', 'web/sites/default/files']);
+    out.should.match(/RELS=database/);
+    out.should.match(/MOUNTS=web\/sites\/default\/files/);
+    out.should.match(/RELS_ACTION=sync/);
+    out.should.match(/MOUNTS_ACTION=sync/);
+  });
+
+  it('unsets the whole list when none is mixed with other values', () => {
+    const out = runHarness(['skip-none', '-r', 'database', '-r', 'none', '-m', 'tmp', '-m', 'none']);
+    out.should.match(/RELS_ACTION=warn-list/);
+    out.should.match(/MOUNTS_ACTION=warn-list/);
+  });
+
+  it('pull/push scripts skip none and warn+list when empty (no auto-primary)', () => {
+    pullSrc.should.match(/if \[ "\$PLATFORM_RELATIONSHIP" == 'none' \]/);
+    pullSrc.should.match(/Looks like you did not pass in any relationships!/);
+    pullSrc.should.match(/upsun_platform relationships --refresh \|\| true/);
+    pullSrc.should.match(/Looks like you did not pass in any mounts!/);
+    pullSrc.should.match(/upsun_platform mounts --refresh \|\| true/);
+    pushSrc.should.match(/if \[ "\$PLATFORM_RELATIONSHIP" == 'none' \]/);
+    pushSrc.should.match(/Looks like you did not pass in any relationships!/);
+    pushSrc.should.match(/upsun_platform relationships --refresh \|\| true/);
+  });
 });
 
 describe('upsun_ensure_active_environment', () => {
@@ -268,6 +354,8 @@ describe('pull/push tooling options', () => {
     pull.options.env.passthrough.should.equal(true);
     pull.options['no-parent'].passthrough.should.equal(true);
     pull.options.auth.describe.should.match(/PLATFORMSH_CLI_TOKEN/);
+    pull.options.relationship.description.should.match(/none/);
+    pull.options.mount.description.should.match(/none/);
 
     const push = getPlatformPush('app', app);
     push.options.project.default.should.equal('proj123');

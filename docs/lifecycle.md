@@ -1,5 +1,9 @@
+---
+title: Lifecycle
+description: How Lando maps the Upsun Fixed container lifecycle (BOOT, BUILD, START, OPEN).
+---
 
-## Platform.sh container lifecycle
+# Upsun Fixed container lifecycle
 
 Normally Lando expects containers to undergo a lifecycle like:
 

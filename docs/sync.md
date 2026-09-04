@@ -13,7 +13,7 @@ Flex (`.upsun/config.yaml`) is a hard abort. Flex sync is not this phase.
 :::
 
 ::: warning Not live-proven here
-Pull/push are **in progress**. Unit tests cover flag parsing, project-id wiring, and resume/activate fallback. They are **not** an E2E proof. A live `PLATFORMSH_CLI_TOKEN` run is still required before calling this E2E.
+Pull/push are **code shipped** on main @ `9bf288b`. Unit tests cover flag parsing, project-id wiring, and resume/activate fallback. They are **not** an E2E proof. A live `PLATFORMSH_CLI_TOKEN` run is still required before calling this E2E.
 :::
 
 Only database relationships are syncable.

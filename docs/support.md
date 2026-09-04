@@ -1,6 +1,6 @@
 ---
 title: Contact Us
-description: Get help and support for the Lando Platformsh Plugin
+description: Get help and support for the Lando Upsun Fixed plugin
 ---
 
 # Contact Us

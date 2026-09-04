@@ -1,5 +1,5 @@
 ---
-description: Home helpful guides for the Platform.sh recipe.
+description: Helpful guides for the Lando Upsun Fixed recipe.
 layout: page
 title: Guides
 sidebar: true
