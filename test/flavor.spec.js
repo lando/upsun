@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const chai = require('chai');
 chai.should();
 const flavor = require('../lib/flavor');
@@ -16,11 +17,18 @@ describe('flavor + Fixed config loading', () => {
     loaded.applications.should.eql([]);
   });
 
-  it('(b) .upsun/config.yaml is Flex and is a hard error', () => {
+  it('(b) .upsun/config.yaml is Flex; abort is warnings + log.error, not loadConfigFiles throw', () => {
     const dir = fixture('flex-config');
     flavor.isFlex(dir).should.equal(true);
-    (() => config.loadConfigFiles(dir)).should.throw(/Flex unsupported until Phase 3; Fixed-only/);
     (() => flavor.assertFixedOnly(dir)).should.throw(/Found \.upsun\/config\.yaml/);
+    // Config load stays pure; app.js uses the empty-app abort path.
+    const loaded = config.loadConfigFiles(dir);
+    loaded.applications.should.eql([]);
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+    appJs.should.match(/warnings\.flexUnsupported\(\)/);
+    appJs.should.match(/lando\.log\.error\(flavor\.FLEX_MESSAGE\)/);
+    appJs.should.match(/Upsun Fixed \(\.platform\) applications/);
+    appJs.should.not.match(/supported Platform\.sh applications/);
   });
 
   it('(c) Fixed root .platform.app.yaml loads, even with an empty .upsun/', () => {

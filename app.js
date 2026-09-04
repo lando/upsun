@@ -12,6 +12,7 @@ const pshconf = require('./lib/config');
 const runconf = require('./lib/run');
 const tooling = require('./lib/tooling');
 const utils = require('./lib/utils');
+const flavor = require('./lib/flavor');
 const warnings = require('./lib/warnings');
 
 const PlatformshApiClient = require('platformsh-client').default;
@@ -35,7 +36,14 @@ module.exports = (app, lando) => {
     if (!fs.existsSync(app.configPath)) mkdirp.sync(app.configPath);
     app.log.debug(`ensured ${app.configPath} exists`);
 
-    // Start by loading in all the platform files we can
+    // Flex is a hard abort on the same path as empty-app (warning + lando.log.error).
+    if (flavor.isFlex(app.root)) {
+      app.addWarning(warnings.flexUnsupported());
+      lando.log.error(flavor.FLEX_MESSAGE);
+      return;
+    }
+
+    // Start by loading in all the Fixed .platform files we can
     app.platformsh = {config: pshconf.loadConfigFiles(app.root)};
 
     // Add in local application overrides as needed
@@ -87,7 +95,8 @@ module.exports = (app, lando) => {
           .map(dirent => ` - ${path.join(app.root, dirent.name, '.platform.app.yaml')}`)
           .concat(path.join(app.root, '.platform', 'applications.yaml'))
           .join(os.EOL);
-        lando.log.error(`Could not detect any supported Platform.sh applications in any of: ${os.EOL}${locations}`);
+        const emptyMsg = 'Could not detect any supported Upsun Fixed (.platform) applications in any of:';
+        lando.log.error(`${emptyMsg} ${os.EOL}${locations}`);
       }
 
       /*
