@@ -4,9 +4,9 @@
   "version": "1.0.0-alpha.0",
   "author": "Mike Pirog @pirog",
   "license": "MIT",
-  "repository": "AaronFeledy/upsun",
-  "bugs": "https://github.com/AaronFeledy/upsun/issues/new",
-  "homepage": "https://github.com/AaronFeledy/upsun",
+  "repository": "lando/upsun",
+  "bugs": "https://github.com/lando/upsun/issues/new",
+  "homepage": "https://github.com/lando/upsun",
   "keywords": [
     "lando",
     "lando-plugin",

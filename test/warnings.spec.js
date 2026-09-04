@@ -8,8 +8,8 @@ describe('warnings', () => {
   it('points service/language help at this repo, not docs.lando.dev/config/platformsh.html', () => {
     const svc = warnings.unsupportedServices('solr (solr:8.6)');
     const lang = warnings.unsupportedLanguages('node (nodejs:16)');
-    svc.url.should.equal('https://github.com/AaronFeledy/upsun/blob/main/docs/config.md');
-    lang.url.should.equal('https://github.com/AaronFeledy/upsun/blob/main/docs/config.md');
+    svc.url.should.equal('https://github.com/lando/upsun/blob/main/docs/config.md');
+    lang.url.should.equal('https://github.com/lando/upsun/blob/main/docs/config.md');
     svc.url.should.not.match(/docs\.lando\.dev\/config\/platformsh/);
     lang.url.should.not.match(/docs\.lando\.dev\/config\/platformsh/);
     svc.title.should.match(/Upsun Fixed/);
