@@ -1,6 +1,6 @@
 ## Unreleased
 
-* Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI. Leia stays quarantined.
+* Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI, VitePress 1.5+ for the theme. Leia stays quarantined.
 
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
 
