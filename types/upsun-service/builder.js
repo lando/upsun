@@ -14,7 +14,7 @@ module.exports = {
     constructor(id, options = {}, ...sources) {
       // Get some stuff from our parsed platform config
       const runConfigPath = _.get(options, 'runConfig.file');
-      const bootScript = path.join(options.userConfRoot, 'scripts', 'psh-boot.sh');
+      const bootScript = path.join(options.userConfRoot, 'scripts', 'upsun-boot.sh');
 
       // If portforward is not set by the user than compute its value
       if (_.isNil(options.portforward)) options.portforward = !_.isEmpty(options.platformsh.creds);

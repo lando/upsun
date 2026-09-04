@@ -40,7 +40,7 @@ module.exports = {
       const runConfig = _.find(options.runConfig.data.applications, app => {
         return app.configuration.name === options.name;
       });
-      const bootScript = path.join(options.userConfRoot, 'scripts', 'psh-boot.sh');
+      const bootScript = path.join(options.userConfRoot, 'scripts', 'upsun-boot.sh');
 
       // A appserver uses the "web" user
       options.meUser = 'web';

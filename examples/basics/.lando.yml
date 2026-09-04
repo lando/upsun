@@ -1,5 +1,5 @@
 name: lando-platformsh-basics
-recipe: platformsh
+recipe: upsun
 config:
   id: om2hlkobxcbwe
   variables:
@@ -19,4 +19,4 @@ config:
 # This is important because it lets lando know to test against the plugin in this repo
 # DO NOT REMOVE THIS!
 plugins:
-  "@lando/platformsh": ./../../
+  "@lando/upsun": ./../../

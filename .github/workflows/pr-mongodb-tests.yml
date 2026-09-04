@@ -46,7 +46,7 @@ jobs:
           lando-version: ${{ matrix.lando-version }}
           config: |
             setup.skipCommonPlugins=true
-            setup.plugins.@lando/platformsh=/home/runner/work/platformsh/platformsh
+            setup.plugins.@lando/upsun=/home/runner/work/upsun/upsun
           telemetry: false
       - name: Run Leia Tests
         uses: lando/run-leia-action@v2

@@ -1,0 +1,9 @@
+name: app
+type: php:8.0
+web:
+  locations:
+    "/":
+      root: "web"
+      passthru: "/index.php"
+relationships:
+  database: "db:mysql"

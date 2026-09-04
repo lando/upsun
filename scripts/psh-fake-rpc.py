@@ -1,9 +1,5 @@
-from gevent.monkey import patch_all;
-patch_all();
-from gevent_jsonrpc import RpcServer;
-import json;
-RpcServer(
-    "/run/shared/agent.sock",
-    "foo",
-    root=None,
-    root_factory=lambda c,a: c.send(json.dumps({"jsonrpc":"2.0","result":True,"id": json.loads(c.recv(1024))["id"]})))._accepter_greenlet.get();
+#!/usr/bin/env python
+# Compatibility wrapper for the pre-rename helper name.
+import os
+import runpy
+runpy.run_path(os.path.join(os.path.dirname(__file__), 'upsun-fake-rpc.py'), run_name='__main__')

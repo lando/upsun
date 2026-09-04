@@ -1,10 +1,11 @@
 # Disable the "core" platformsh plugins
 disablePlugins:
   - lando-platformsh
+  - lando-upsun
 
 # Make sure we are dogfooding this plugin for testing purposes
 plugins:
-  "@lando/platformsh": /home/runner/work/platformsh/platformsh
+  "@lando/upsun": /home/runner/work/upsun/upsun
 
 # Disable metrics reporting
 stats:

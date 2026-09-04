@@ -1,17 +1,18 @@
 {
-  "name": "@lando/platformsh",
-  "description": "A Lando plugin that provides a tight integration with Platform.sh.",
-  "version": "0.9.0",
+  "name": "@lando/upsun",
+  "description": "A Lando plugin for Upsun Fixed (.platform) projects. Flex is not supported yet.",
+  "version": "1.0.0-alpha.0",
   "author": "Mike Pirog @pirog",
   "license": "MIT",
-  "repository": "lando/platformsh",
-  "bugs": "https://github.com/lando/platformsh/issues/new/choose",
-  "homepage": "https://github.com/lando/platformsh",
+  "repository": "AaronFeledy/upsun",
+  "bugs": "https://github.com/AaronFeledy/upsun/issues/new",
+  "homepage": "https://github.com/AaronFeledy/upsun",
   "keywords": [
     "lando",
     "lando-plugin",
     "lando-recipe",
     "lando-hosting-integration",
+    "upsun",
     "platformsh"
   ],
   "engines": {
