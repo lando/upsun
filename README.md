@@ -39,6 +39,7 @@ Review artifacts:
 ## What is deferred
 
 * **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — **proven (local)** for `examples/mariadb-10.4` only; broader matrix still **defer**
+* **Pull/push live token E2E** — code + unit tests only; do not claim proven without a live `PLATFORMSH_CLI_TOKEN`
 * Flex OPEN or Flex relationship rewriting — hard error until Phase 3
 * Leia / Docker example jobs — still quarantined on PRs (one local spike is not a Leia matrix)
 * Broader Docker OPEN against `docker.registry.platform.sh` is still **defer**. Registry HTTP probe: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). Live local OPEN used `php-7.3` + `mariadb-10.4`; see [(6) Image spike](docs/parity/06-image-spike.md).
