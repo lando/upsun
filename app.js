@@ -36,11 +36,11 @@ module.exports = (app, lando) => {
     if (!fs.existsSync(app.configPath)) mkdirp.sync(app.configPath);
     app.log.debug(`ensured ${app.configPath} exists`);
 
-    // Flex is a hard abort on the same path as empty-app (warning + lando.log.error).
+    // Flex is a hard abort. lando.log.error does not throw; a soft return leaves
+    // app.platformsh unset and recipes/upsun/builder.js TypeErrors on closestApp.
     if (flavor.isFlex(app.root)) {
       app.addWarning(warnings.flexUnsupported());
-      lando.log.error(flavor.FLEX_MESSAGE);
-      return;
+      flavor.assertFixedOnly(app.root);
     }
 
     // Start by loading in all the Fixed .platform files we can

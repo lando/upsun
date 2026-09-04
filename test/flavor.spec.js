@@ -2,12 +2,34 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const Module = require('module');
 const chai = require('chai');
-chai.should();
+const should = chai.should();
 const flavor = require('../lib/flavor');
 const config = require('../lib/config');
 
 const fixture = name => path.join(__dirname, 'fixtures', name);
+
+/**
+ * Load app.js. mkdirp is provided by Lando at runtime; stub it for unit tests.
+ *
+ * @return {Function} The plugin bootstrap.
+ */
+const loadAppPlugin = () => {
+  try {
+    require.resolve('mkdirp');
+  } catch (e) {
+    const originalLoad = Module._load;
+    Module._load = function(request, parent, isMain) {
+      if (request === 'mkdirp') {
+        return {sync: dir => fs.mkdirSync(dir, {recursive: true})};
+      }
+      return originalLoad(request, parent, isMain);
+    };
+  }
+  return require('../app');
+};
 
 describe('flavor + Fixed config loading', () => {
   it('(a) empty .upsun/ is not Flex and does not throw', () => {
@@ -17,18 +39,54 @@ describe('flavor + Fixed config loading', () => {
     loaded.applications.should.eql([]);
   });
 
-  it('(b) .upsun/config.yaml is Flex; abort is warnings + log.error, not loadConfigFiles throw', () => {
+  it('(b) .upsun/config.yaml is Flex; assertFixedOnly throws and config load stays pure', () => {
     const dir = fixture('flex-config');
     flavor.isFlex(dir).should.equal(true);
     (() => flavor.assertFixedOnly(dir)).should.throw(/Found \.upsun\/config\.yaml/);
-    // Config load stays pure; app.js uses the empty-app abort path.
+    try {
+      flavor.assertFixedOnly(dir);
+      throw new Error('expected Flex abort');
+    } catch (err) {
+      err.code.should.equal('UPSUN_FLEX_UNSUPPORTED');
+    }
     const loaded = config.loadConfigFiles(dir);
     loaded.applications.should.eql([]);
-    const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
-    appJs.should.match(/warnings\.flexUnsupported\(\)/);
-    appJs.should.match(/lando\.log\.error\(flavor\.FLEX_MESSAGE\)/);
-    appJs.should.match(/Upsun Fixed \(\.platform\) applications/);
-    appJs.should.not.match(/supported Platform\.sh applications/);
+  });
+
+  it('(b2) app.js Flex abort throws and leaves app.platformsh unset', () => {
+    const plugin = loadAppPlugin();
+    const userConfRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-flex-'));
+    const warningsAdded = [];
+    const app = {
+      root: fixture('flex-config'),
+      name: 'flex-abort',
+      id: 'flex-abort',
+      config: {recipe: 'upsun', config: {}},
+      _config: {userConfRoot, domain: 'lndo.site'},
+      log: {verbose() {}, debug() {}, silly() {}, alsoSanitize() {}},
+      addWarning(warning) {
+        warningsAdded.push(warning);
+      },
+      events: {on() {}},
+    };
+    const lando = {
+      log: {error() {}},
+      cache: {get() {}, set() {}, remove() {}},
+    };
+
+    let thrown;
+    try {
+      plugin(app, lando);
+    } catch (err) {
+      thrown = err;
+    }
+    should.exist(thrown);
+    thrown.code.should.equal('UPSUN_FLEX_UNSUPPORTED');
+    thrown.message.should.match(/Found \.upsun\/config\.yaml/);
+    thrown.message.should.match(/Flex unsupported until Phase 3/);
+    should.not.exist(app.platformsh);
+    warningsAdded.should.have.length(1);
+    warningsAdded[0].title.should.match(/Flex unsupported until Phase 3/);
   });
 
   it('(c) Fixed root .platform.app.yaml loads, even with an empty .upsun/', () => {

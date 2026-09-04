@@ -26,7 +26,7 @@ Review artifacts:
 ## What Phase-0/1 changes (code)
 
 * Package `@lando/upsun`, recipe `upsun` (deprecated alias: `platformsh`)
-* Fixed gate: `.upsun/config.yaml` is a hard abort (`warnings.flexUnsupported` + `lando.log.error`). Empty `.upsun/` is ignored.
+* Fixed gate: `.upsun/config.yaml` is a hard abort (`warnings.flexUnsupported` + `flavor.assertFixedOnly()` throw). Empty `.upsun/` is ignored.
 * Fixed config load: `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`
 * Auth path preserved: container CLI is `platform` with `PLATFORMSH_CLI_TOKEN`
 * Token cache `upsun.tokens` with **read-old-write-new** from `platformsh.tokens`

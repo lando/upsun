@@ -5,7 +5,7 @@ description: Learn about caveats and known issues with the Lando Platform.sh rec
 
 # Caveats and known issues
 
-This is a **Fixed-only** WIP. Flex (`.upsun/config.yaml`) is rejected until Phase 3. File issues on [AaronFeledy/upsun](https://github.com/AaronFeledy/upsun/issues).
+This is a **Fixed-only** WIP. Flex (`.upsun/config.yaml`) is rejected until Phase 3. File issues on [lando/upsun](https://github.com/lando/upsun/issues).
 
 ## Flex
 

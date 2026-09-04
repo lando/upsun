@@ -9,7 +9,7 @@ One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @
 | Item | Status | Notes |
 | --- | --- | --- |
 | Rename (`@lando/upsun`, recipe `upsun`) | **ship** | Deprecated `platformsh` recipe/init aliases. |
-| Fixed gate | **ship** | `.upsun/config.yaml` → `warnings.flexUnsupported` + `lando.log.error`. Empty `.upsun/` ignored. |
+| Fixed gate | **ship** | `.upsun/config.yaml` → `warnings.flexUnsupported` + `flavor.assertFixedOnly()` throw. Empty `.upsun/` ignored. |
 | Fixed config load | **ship** | Root `.platform.app.yaml` and `.platform/applications.yaml`-only covered by unit fixtures. |
 | Auth path (`platform` + `PLATFORMSH_CLI_TOKEN` + `platformsh-client`) | **ship** (code) | Kept. No live host-token E2E. In-app `platform` 4.24.0 seen on the local spike. |
 | Token cache | **ship** | Write `upsun.tokens`; read-old `platformsh.tokens`. |

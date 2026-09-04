@@ -15,8 +15,8 @@ export default defineConfig({
   version,
   head: [
     ['meta', {name: 'viewport', content: 'width=device-width, initial-scale=1'}],
-    ['link', {rel: 'icon', href: '/platformsh/favicon.ico', size: 'any'}],
-    ['link', {rel: 'icon', href: '/platformsh/favicon.svg', type: 'image/svg+xml'}],
+    ['link', {rel: 'icon', href: '/plugins/upsun/favicon.ico', size: 'any'}],
+    ['link', {rel: 'icon', href: '/plugins/upsun/favicon.svg', type: 'image/svg+xml'}],
   ],
   themeConfig: {
     sidebar: sidebar(),
@@ -51,10 +51,10 @@ function sidebar() {
       text: 'Help & Support',
       collapsed: false,
       items: [
-        {text: 'GitHub', link: 'https://github.com/AaronFeledy/upsun/issues/new'},
+        {text: 'GitHub', link: 'https://github.com/lando/upsun/issues/new'},
         {text: 'Slack', link: 'https://www.launchpass.com/devwithlando'},
         {text: 'Contact Us', link: '/support'},
-        {text: 'Examples', link: 'https://github.com/AaronFeledy/upsun/tree/main/examples'},
+        {text: 'Examples', link: 'https://github.com/lando/upsun/tree/main/examples'},
       ],
     },
     {text: 'Guides', link: '/guides', activeMatch: '/guides'},

@@ -19,7 +19,7 @@ At the very least you will need to have the following installed:
 
 ```sh
 # Clone this repo
-git clone https://github.com/AaronFeledy/upsun.git && cd upsun
+git clone https://github.com/lando/upsun.git && cd upsun
 
 # Install deps
 npm install

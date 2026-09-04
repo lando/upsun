@@ -8,7 +8,7 @@ Phase-1 Fixed local runtime is measured against this commit, not against the his
 | Meaning | Current [`lando/platformsh`](https://github.com/lando/platformsh) `main` tip |
 | Subject | `AUTODEPLOYED @lando/vitepress-theme-default-plus@1.2.0` |
 | Date | 2026-07-30 |
-| Seeded repo | This fork (`AaronFeledy/upsun`) `main` at clone time |
+| Seeded repo | This fork (`lando/upsun`) `main` at clone time |
 
 ## Relation to tag `v0.10.0`
 
