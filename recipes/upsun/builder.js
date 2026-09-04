@@ -93,6 +93,13 @@ module.exports = {
           .flatten()
           .fromPairs()
           .value();
+
+        // Landofile config.id / app.id → PLATFORM_PROJECT so pull/push can -p / set-remote
+        const projectId = _.get(options, '_app.id') || _.get(options, '_app.config.config.id');
+        if (projectId) {
+          options.tooling.pull.env = _.merge({}, options.tooling.pull.env, {PLATFORM_PROJECT: projectId});
+          options.tooling.push.env = _.merge({}, options.tooling.push.env, {PLATFORM_PROJECT: projectId});
+        }
       }
 
       // If we have a token lets set that into all our CLI tools

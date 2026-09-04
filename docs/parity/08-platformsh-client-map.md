@@ -22,8 +22,8 @@ Token passed into the client is the Platform.sh API token (`--upsun-auth` / depr
 
 These talk to the **`platform` CLI**, not `platformsh-client`:
 
-* `scripts/upsun-pull.sh` — `platform auth:info`, `project:info`, `db:dump`, `mount:download`
-* `scripts/upsun-push.sh` — `platform auth:info`, `project:info`, `db:sql`, `mount:upload`
+* `scripts/upsun-pull.sh` / `upsun-sync-env.sh` — `platform auth:info`, `project:set-remote`, `project:info`, `environment:resume` / `environment:activate`, `db:dump`, `mount:download`
+* `scripts/upsun-push.sh` / `upsun-sync-env.sh` — `platform auth:info`, `project:set-remote`, `project:info`, `environment:resume` / `environment:activate`, `db:sql`, `mount:upload`
 * `scripts/upsun-build.sh` — `platform mounts`, `platform local:build`
 * `scripts/upsun-exec.sh` — preserves `PLATFORM_*` so `platform` remote vs local stays correct
 * `lib/tooling.js` `getPlatformCliTooling` — exposes `lando platform`

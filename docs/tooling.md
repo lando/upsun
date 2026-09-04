@@ -1,12 +1,12 @@
 ---
-description: Learn about the various out-of-the-box tooling you get with the Lando Platform.sh recipe.
+description: Learn about the various out-of-the-box tooling you get with the Lando Upsun Fixed recipe.
 ---
 
 # Tooling
 
-## Platform.sh CLI (Fixed)
+## Upsun Fixed CLI
 
-Every application container contains the [Platform.sh CLI](https://docs.platform.sh/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`.
+Every application container contains the [Upsun Fixed CLI](https://fixed.docs.upsun.com/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`.
 
 ```bash
 # Who am i?

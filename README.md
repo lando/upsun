@@ -2,7 +2,7 @@
 
 Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
 
-**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable); pull/push, live token, Flex, and the broader OPEN matrix are still **deferred**.
+**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable). Pull/push are **in progress** (code + unit tests; **not E2E-proven** without a live `PLATFORMSH_CLI_TOKEN`). Flex and the broader OPEN matrix are still **deferred**.
 
 Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
 
@@ -33,11 +33,13 @@ Review artifacts:
 * Host CLI tokens from `~/.platformsh/cache/tokens`
 * Init still uses pinned `platformsh-client@0.1.230` (`getAccountInfo`, `getProject`, `addSshKey`, `getAccessToken`)
 * Flags `--upsun-auth` / `--upsun-site` plus deprecated `--platformsh-auth` / `--platformsh-site`
-* `lando platform` / pull / push / ssh scripts still call `platform` (code kept, not runtime-proven)
+* `lando platform` / ssh scripts still call `platform` (code kept, not runtime-proven)
+* `lando pull` / `lando push` use `platform` + `PLATFORMSH_CLI_TOKEN`, Landofile `config.id`, and resume/activate before parent fallback (**needs live token proof**)
 
 ## What is deferred
 
 * **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — **proven (local)** for `examples/mariadb-10.4` only; broader matrix still **defer**
+* **Pull/push live token E2E** — code + unit tests only; do not claim proven without a live `PLATFORMSH_CLI_TOKEN`
 * Flex OPEN or Flex relationship rewriting — hard error until Phase 3
 * Leia / Docker example jobs — still quarantined on PRs (one local spike is not a Leia matrix)
 * Broader Docker OPEN against `docker.registry.platform.sh` is still **defer**. Registry HTTP probe: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). Live local OPEN used `php-7.3` + `mariadb-10.4`; see [(6) Image spike](docs/parity/06-image-spike.md).
@@ -68,7 +70,7 @@ Needs Lando + Docker on a workstation. This cloud agent cannot run Docker OPEN; 
 1. **Init (token)** — `lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site <name>`
 2. **Init (cwd Fixed PHP + MariaDB)** — copy `examples/mariadb-10.4`, set `recipe: upsun`, `lando start`
 3. **`lando platform`** — `lando platform -V` / `auth:info` (uses `PLATFORMSH_CLI_TOKEN`)
-4. **Pull dry-run** — `lando pull -r none -m none` (lists remotes; no token → auth error, expected)
+4. **Pull** — `lando pull -r none -m none` (lists remotes). Live token + resume of a paused env still **needs proof**; this cloud agent does not run that E2E.
 5. **Flex hard abort** — add `.upsun/config.yaml` and confirm start/init fails with the Phase 3 warning + error
 6. **Empty `.upsun/`** — directory only, Fixed yaml still loads
 
