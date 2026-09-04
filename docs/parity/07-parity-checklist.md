@@ -34,4 +34,4 @@ One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @
 npm test   # lint + unit tests
 ```
 
-This cloud agent still cannot run Docker. The live local proof is Claw's `lando start` on `examples/mariadb-10.4`. See [(6) Image spike](06-image-spike.md).
+This cloud agent still cannot run Docker. The live local proof is Pinchy's `lando start` on `examples/mariadb-10.4` (logs under `/workspace/upsun-open-spike-logs/`; Claw reviewed and PASSed). See [(6) Image spike](06-image-spike.md).

@@ -2,11 +2,12 @@
 
 Goal: can we pull Platform.sh Fixed images from `docker.registry.platform.sh` well enough to run OPEN?
 
-**Result: proven (local)** for `examples/mariadb-10.4` only. Claw ran a live `lando start` against lando/upsun#221 @ `836c0b001d824477d4c372cbd809caa842b4ab73`. That is one Fixed example, not product-complete OPEN and not a full matrix. Host `PLATFORMSH_CLI_TOKEN` / pull-push were not exercised. Flex was not tested.
+**Result: proven (local)** for `examples/mariadb-10.4` only. Pinchy ran a live `lando start` on Pinchy's computer against lando/upsun#221 @ `836c0b001d824477d4c372cbd809caa842b4ab73`. Logs are under `/workspace/upsun-open-spike-logs/`. Claw reviewed those logs and PASSed Fixed local OPEN for this example only. That is one Fixed example, not product-complete OPEN and not a full matrix. Host `PLATFORMSH_CLI_TOKEN` / pull-push were not exercised. Flex was not tested.
 
-## Live local spike (Claw)
+## Live local spike (Pinchy)
 
 * Repo/PR: [lando/upsun#221](https://github.com/lando/upsun/pull/221) @ `836c0b001d824477d4c372cbd809caa842b4ab73`
+* Operator: Pinchy (live local OPEN on Pinchy's computer); logs `/workspace/upsun-open-spike-logs/`; Claw reviewed and PASSed
 * Example: `examples/mariadb-10.4` (Fixed `.platform*`, recipe `upsun`, `config.id` DISCONNECTED)
 * Anonymous pulls: `docker.registry.platform.sh/php-7.3` + `docker.registry.platform.sh/mariadb-10.4`
 * `lando start` EXIT 0; Opening platform.sh containers; app / mariadb / multi green; URLs 502 then 200

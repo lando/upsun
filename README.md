@@ -14,7 +14,7 @@ Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) tip:
 
 That SHA **is** the current `lando/platformsh` `main` tip. It is **50 commits ahead** of tag [`v0.10.0`](https://github.com/lando/platformsh/releases/tag/v0.10.0) (`111845db63b31092e80ef9f5386b97c31eba2987`). The seed `package.json` historically said `0.9.0` (both at the tip and at `v0.10.0`).
 
-This is the code we forked. It is **not** a claim that BOOT/BUILD/START/OPEN or `PLATFORM_RELATIONSHIPS` work on current Docker.
+This is the code we forked. That seed SHA **alone** is **not** a claim that BOOT/BUILD/START/OPEN or `PLATFORM_RELATIONSHIPS` work on current Docker. The later local proof for `examples/mariadb-10.4` is recorded separately above and in [(6) Image spike](docs/parity/06-image-spike.md).
 
 Review artifacts:
 
@@ -63,7 +63,7 @@ Existing Lando token caches named `platformsh.tokens` are read automatically. Ne
 
 ## Manual test plan
 
-Needs Lando + Docker on a workstation. This environment could not run OPEN.
+Needs Lando + Docker on a workstation. This cloud agent cannot run Docker OPEN; the local spike was already done once by Pinchy.
 
 1. **Init (token)** — `lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site <name>`
 2. **Init (cwd Fixed PHP + MariaDB)** — copy `examples/mariadb-10.4`, set `recipe: upsun`, `lando start`
