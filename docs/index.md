@@ -1,24 +1,22 @@
 ---
-title: Platform.sh Lando Plugin
-description: The best local development environment option for Platform.sh, the fastest way to build modern web apps.
+title: Upsun Lando Plugin (Fixed)
+description: Local Lando development for Upsun Fixed (.platform) projects.
 next: ./getting-started.html
 ---
 
-::: warning
-The Platform.sh plugin is currently unsupported, so YMMV.
+::: warning Fixed-only
+This plugin is a WIP revival of `@lando/platformsh`. It supports **Fixed** config only (`.platform.app.yaml` and `.platform/*`). If `.upsun/config.yaml` is present the plugin exits with a hard error. Flex is Phase 3. An empty `.upsun/` directory is ignored.
 :::
 
-# Platform.sh
+# Upsun (Fixed)
 
-[Platform.sh](https://platform.sh/) is an end-to-end web platform for agile teams.
+[Upsun](https://upsun.com/) Fixed projects still use the Platform.sh yaml layout and images. This plugin:
 
-This Lando integration is currently **unsupported**. If your team is interested in sponsoring the integration, [contact us](./support.md)! For now...
+* Starts Fixed PHP appservers and supported services from `.platform*` config
+* Uses Platform.sh registry images and the BOOT/BUILD/OPEN lifecycle
+* Keeps the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics
+* Syncs database relationships and mounts via `lando pull` / `lando push`
 
-* This should be considered at an `beta` level of readiness
-* This has only been tested against Platform.sh's `php` project templates
-* This currently _only_ supports Platform.sh's `php` application container
-* It's not yet clear how much customization to your project is currently supported
+It does **not** implement Flex local OPEN or an `upsun` CLI cutover for Fixed ops.
 
-However, if you'd like to try it out and give your feedback on what worked and what didn't then please continue. You can also read about some more caveats [here](./caveats.md).
-
-You can report any issues or feedback [over here](https://github.com/lando/platformsh/issues/new/choose) or check out the [support page](./support.md).
+PHP is the only supported application language. Workers, `network_storage`, and non-PHP runtimes still warn as unsupported.

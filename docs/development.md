@@ -5,7 +5,7 @@ description: Learn how to develop and contribute to the Lando Platformsh service
 
 # Development
 
-This guide contains information to help onboard developers to work on the [platformsh](https://platform.sh/) integration, hereafter referred to as *the plugin*.
+This guide contains information to help onboard developers to work on the Upsun Fixed integration (seeded from `@lando/platformsh`), hereafter referred to as *the plugin*.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ At the very least you will need to have the following installed:
 
 ```sh
 # Clone this repo
-git clone https://github.com/lando/platformsh.git && cd platformsh
+git clone https://github.com/AaronFeledy/upsun.git && cd upsun
 
 # Install deps
 npm install
@@ -33,16 +33,16 @@ Note that each one of these examples contains the following section in its Lando
 
 ```yaml
 plugins:
-  "@lando/platformsh": ../..
+  "@lando/upsun": ../..
 ```
 
-This tells Lando that _this_ app should use the source version of the `@lando/platformsh` plugin you cloned down in the installation. This is useful because it allows you to isolate development within this repo without interferring with any other apps using the stable and global version of the plugin.
+This tells Lando that _this_ app should use the source version of the `@lando/upsun` plugin you cloned down in the installation. This is useful because it allows you to isolate development within this repo without interferring with any other apps using the stable and global version of the plugin.
 
 This means that you should _almost always_ develop against apps in the `examples` folder and that those apps should _always_ contain the above `plugins` config. If you have an extant Lando application you want to develop against you can temporarily tell it to use the cloned down version of the plugin with the same line.
 
 ```yaml
 plugins:
-  "@lando/platformsh": /path/to/plugin
+  "@lando/upsun": /path/to/plugin
 ```
 
 Whether you are working off an existing example or a new one you should make sure that you are updating or adding new tests as you go. See [leia testing](#leia-tests) below for more detail.
@@ -155,9 +155,9 @@ Also note that if you create a "pre-release" it will tag the `npm` package with 
 
 ```bash
 # Will pull the most recent GitHub release
-npm install @lando/platformsh
+npm install @lando/upsun
 # Will pull the most recent GitHub pre-release
-npm install @lando/platformsh@edge
+npm install @lando/upsun@edge
 ```
 
 ## Contribution

@@ -4,9 +4,9 @@ description: Learn about the various out-of-the-box tooling you get with the Lan
 
 # Tooling
 
-## Platform.sh CLI
+## Platform.sh CLI (Fixed)
 
-Every application container will contain the [Platform.sh CLI](https://docs.platform.sh/administration/cli.html); automatically authenticated for use with the account and project you selected during `lando init`.
+Every application container still contains the [Platform.sh CLI](https://docs.platform.sh/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`. This phase does **not** switch Fixed ops to the `upsun` binary.
 
 ```bash
 # Who am i?
@@ -20,7 +20,7 @@ If you find yourself unauthenticated for whatever reason. You should try the fol
 
 ```bash
 # Reauthenticate using already pulled down code
-lando init --source cwd --recipe platformsh
+lando init --source cwd --recipe upsun
 
 # Rebuild your lando app
 lando rebuild -y

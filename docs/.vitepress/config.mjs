@@ -8,8 +8,8 @@ const {name, version} = require('../../package.json');
 const landoPlugin = name.replace('@lando/', '');
 
 export default defineConfig({
-  title: 'Lando Platformsh Plugin',
-  description: 'The offical Lando plugin for Platformsh.',
+  title: 'Lando Upsun Plugin (Fixed)',
+  description: 'Lando plugin for Upsun Fixed (.platform) projects.',
   landoDocs: 3,
   landoPlugin,
   version,
@@ -51,10 +51,10 @@ function sidebar() {
       text: 'Help & Support',
       collapsed: false,
       items: [
-        {text: 'GitHub', link: 'https://github.com/lando/platformsh/issues/new/choose'},
+        {text: 'GitHub', link: 'https://github.com/AaronFeledy/upsun/issues/new'},
         {text: 'Slack', link: 'https://www.launchpass.com/devwithlando'},
         {text: 'Contact Us', link: '/support'},
-        {text: 'Examples', link: 'https://github.com/lando/platformsh/tree/main/examples'},
+        {text: 'Examples', link: 'https://github.com/AaronFeledy/upsun/tree/main/examples'},
       ],
     },
     {text: 'Guides', link: '/guides', activeMatch: '/guides'},
