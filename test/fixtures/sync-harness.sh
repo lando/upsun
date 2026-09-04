@@ -34,6 +34,37 @@ case "$mode" in
     upsun_bind_project
     echo "PROJECT=${PLATFORM_PROJECT}"
     ;;
+  skip-none)
+    # Mirrors upsun-pull.sh / upsun-push.sh: "none" unsets the whole list so
+    # empty arrays warn+list remotes (no auto-primary pull/push).
+    upsun_parse_sync_args "$@"
+    RELS=("${PLATFORM_SYNC_RELATIONSHIPS[@]}")
+    MOUNTS=("${PLATFORM_SYNC_MOUNTS[@]}")
+    for item in "${RELS[@]}"; do
+      if [ "$item" == 'none' ]; then
+        unset RELS
+      fi
+    done
+    for item in "${MOUNTS[@]}"; do
+      if [ "$item" == 'none' ]; then
+        unset MOUNTS
+      fi
+    done
+    echo "RELS=${RELS[*]}"
+    echo "MOUNTS=${MOUNTS[*]}"
+    echo "RELS_COUNT=${#RELS[@]}"
+    echo "MOUNTS_COUNT=${#MOUNTS[@]}"
+    if [ ${#RELS[@]} -eq 0 ]; then
+      echo "RELS_ACTION=warn-list"
+    else
+      echo "RELS_ACTION=sync"
+    fi
+    if [ ${#MOUNTS[@]} -eq 0 ]; then
+      echo "MOUNTS_ACTION=warn-list"
+    else
+      echo "MOUNTS_ACTION=sync"
+    fi
+    ;;
   *)
     echo "unknown mode: $mode" >&2
     exit 2

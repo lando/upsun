@@ -2,7 +2,7 @@
 
 Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
 
-**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable). Pull/push are **in progress** (code + unit tests; **not E2E-proven** without a live `PLATFORMSH_CLI_TOKEN`). Flex and the broader OPEN matrix are still **deferred**.
+**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable). Pull/push are **code shipped** on main @ `9bf288b` (resume/activate, Landofile `config.id`, space-form flags, unit tests) but still **not E2E-proven** without a live `PLATFORMSH_CLI_TOKEN`. Flex and the broader OPEN matrix are still **deferred**.
 
 Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
 
@@ -34,12 +34,12 @@ Review artifacts:
 * Init still uses pinned `platformsh-client@0.1.230` (`getAccountInfo`, `getProject`, `addSshKey`, `getAccessToken`)
 * Flags `--upsun-auth` / `--upsun-site` plus deprecated `--platformsh-auth` / `--platformsh-site`
 * `lando platform` / ssh scripts still call `platform` (code kept, not runtime-proven)
-* `lando pull` / `lando push` use `platform` + `PLATFORMSH_CLI_TOKEN`, Landofile `config.id`, and resume/activate before parent fallback (**needs live token proof**)
+* `lando pull` / `lando push` use `platform` + `PLATFORMSH_CLI_TOKEN`, Landofile `config.id`, and resume/activate before parent fallback (**code shipped** on main @ `9bf288b`; **not E2E-proven**)
 
 ## What is deferred
 
 * **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — **proven (local)** for `examples/mariadb-10.4` only; broader matrix still **defer**
-* **Pull/push live token E2E** — code + unit tests only; do not claim proven without a live `PLATFORMSH_CLI_TOKEN`
+* **Pull/push live token E2E** — **code shipped** on main @ `9bf288b` (unit tests only); do not claim proven without a live `PLATFORMSH_CLI_TOKEN`
 * Flex OPEN or Flex relationship rewriting — hard error until Phase 3
 * Leia / Docker example jobs — still quarantined on PRs (one local spike is not a Leia matrix)
 * Broader Docker OPEN against `docker.registry.platform.sh` is still **defer**. Registry HTTP probe: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). Live local OPEN used `php-7.3` + `mariadb-10.4`; see [(6) Image spike](docs/parity/06-image-spike.md).

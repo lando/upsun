@@ -1,6 +1,6 @@
 ---
 title: Development
-description: Learn how to develop and contribute to the Lando Platformsh service
+description: Learn how to develop and contribute to the Lando Upsun Fixed plugin
 ---
 
 # Development

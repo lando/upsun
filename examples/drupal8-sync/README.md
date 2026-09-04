@@ -1,9 +1,9 @@
-Platform.sh Drupal 8 Integration Example
+Upsun Fixed Drupal 8 sync example
 ========================================
 
-This example exists primarily to test `lando init`, `lando start` and `lando pull` for a basic Drupal 8 site.
+This example exists primarily to test `lando init`, `lando start` and `lando pull` for a basic Drupal 8 site on Upsun Fixed.
 
-* [Upsun Fixed recipe](https://github.com/AaronFeledy/upsun/blob/main/docs/config.md)
+* [Upsun Fixed recipe](https://github.com/lando/upsun/blob/main/docs/config.md)
 
 Start up tests
 --------------
@@ -14,15 +14,16 @@ Run the following commands to get up and running with this example.
 # Should poweroff
 lando poweroff
 
-# Should initialize the platformsh lando-d8 example
+# Should initialize the Upsun Fixed lando-d8 example
+# (writes recipe: upsun; deprecated --platformsh-auth / --platformsh-site / --platformsh-key-name aliases still work)
 rm -rf drupal && mkdir -p drupal && cd drupal
-lando init --source platformsh --platformsh-auth "$PLATFORMSH_CLI_TOKEN" --platformsh-site lando-d8 --platformsh-key-name "$GITHUB_SHA"
+lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site lando-d8 --upsun-key-name "$GITHUB_SHA"
 
-# Should start up our platformsh drupal 8 site successfully
+# Should start up our Upsun Fixed Drupal 8 site successfully
 cd drupal
 lando start
 
-# Should pull down database and files for our drupal8 site
+# Should pull down database and files for our Drupal 8 site
 cd drupal
 lando pull -r database -m web/sites/default/files
 ```
@@ -33,7 +34,7 @@ Verification commands
 Run the following commands to validate things are rolling as they should.
 
 ```bash
-# Should be able to bootstrap drupal 8
+# Should be able to bootstrap Drupal 8
 cd drupal/web
 lando ssh -c "drush status" | grep Database | grep Connected
 
@@ -112,11 +113,11 @@ lando ssh -c "env" | grep LOCAL_OVERRIDE2 | grep stillhappening
 cd drupal
 lando database main -e "show variables;" | grep max_allowed_packet | grep 66060288
 
-# Should connect to remote platform environment and not local
+# Should connect to remote Fixed environment and not local
 cd drupal
 lando platform relationships | grep hostname | grep platformsh.site
 
-# Should be able to persist the drupal database after a rebuild
+# Should be able to persist the Drupal database after a rebuild
 cd drupal
 lando rebuild -y
 lando database main -e "show tables;" | grep users
@@ -132,14 +133,14 @@ Destroy tests
 Run the following commands to trash this app like nothing ever happened.
 
 ```bash
-# Should be able to remove our platformsh ssh keys
+# Should be able to remove our Upsun Fixed ssh keys
 cp -r remove-keys.sh drupal/remove-keys.sh
 cd drupal
 lando ssh -s appserver -c "/app/remove-keys.sh $GITHUB_SHA"
 cd ..
 rm -rf drupal/remove-keys.sh
 
-# Should be able to destroy our platformsh site with success
+# Should be able to destroy our Upsun Fixed site with success
 cd drupal
 lando destroy -y
 lando poweroff
