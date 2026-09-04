@@ -1,6 +1,6 @@
 ---
 title: Upsun Lando Plugin (Fixed)
-description: Local Lando development for Upsun Fixed (.platform) projects.
+description: Local Lando development for Upsun Fixed (.platform) projects. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.
 next: ./getting-started.html
 ---
 
@@ -14,9 +14,9 @@ This plugin is a WIP revival of `@lando/platformsh`. It supports **Fixed** confi
 
 * Starts Fixed PHP appservers and supported services from `.platform*` config
 * Uses Platform.sh registry images and the BOOT/BUILD/OPEN lifecycle
-* Keeps the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics
+* Uses the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics
 * Syncs database relationships and mounts via `lando pull` / `lando push`
 
-It does **not** implement Flex local OPEN or an `upsun` CLI cutover for Fixed ops.
+It does **not** implement Flex local OPEN. Flex (`.upsun/config.yaml`) is a hard error until Phase 3.
 
 PHP is the only supported application language. Workers, `network_storage`, and non-PHP runtimes still warn as unsupported.

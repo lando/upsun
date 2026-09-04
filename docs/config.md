@@ -20,7 +20,7 @@ config:
   overrides: {}
 ```
 
-`recipe: upsun` remains a deprecated alias. The Landofile stays small because Lando uses the same Fixed images and `.platform*` files as production.
+`recipe: platformsh` remains a deprecated alias for `recipe: upsun`. The Landofile stays small because Lando uses the same Fixed images and `.platform*` files as production.
 
 This means that instead of modifying your Landofile to add, edit or remove the services, dependencies, build steps, etc you need to run your application you will want to modify your Platform.sh configuration according to their documentation and then do the usual `lando rebuild` for those changes to be applied.
 

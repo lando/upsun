@@ -1,6 +1,6 @@
 {
   "name": "@lando/upsun",
-  "description": "A Lando plugin for Upsun Fixed (.platform) projects. Flex is not supported yet.",
+  "description": "Lando plugin for Upsun Fixed (ex-Platform.sh). Phase-1: Fixed config + platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.",
   "version": "1.0.0-alpha.0",
   "author": "Mike Pirog @pirog",
   "license": "MIT",

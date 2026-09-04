@@ -1,16 +1,29 @@
 # @lando/upsun
 
-WIP revival of [`@lando/platformsh`](https://github.com/lando/platformsh) as a Lando plugin for **Upsun Fixed** projects.
+Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
 
-**This release is Fixed-only.** It loads `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`. Flex (`.upsun/config.yaml`) is a hard error until Phase 3. An empty `.upsun/` directory is ignored.
+**Phase-1:** Fixed config + `platform` CLI / `PLATFORMSH_CLI_TOKEN`. Flex (`.upsun`) is not supported.
+
+This release loads `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`. If `.upsun/config.yaml` is present the plugin exits with a hard error. An empty `.upsun/` directory is ignored.
+
+Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
 
 ## Parity floor
 
-Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) at:
+Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) tip:
 
 `9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0`
 
-That SHA is the behavioral floor for Fixed local runtime (config load, service builders, BOOT/BUILD/START/OPEN, `PLATFORM_RELATIONSHIPS`, `platform` CLI pull/push/ssh).
+That SHA **is** the current `lando/platformsh` `main` tip. It is **50 commits ahead** of tag [`v0.10.0`](https://github.com/lando/platformsh/releases/tag/v0.10.0) (`111845db63b31092e80ef9f5386b97c31eba2987`). The seed `package.json` historically said `0.9.0` (both at the tip and at `v0.10.0`).
+
+That SHA is the behavioral floor for Fixed local runtime: config load, service builders, BOOT/BUILD/START/OPEN, `PLATFORM_RELATIONSHIPS`, and `platform` CLI pull/push/ssh.
+
+Review artifacts:
+
+* [(5) Parity floor SHA](docs/parity/05-parity-floor-sha.md)
+* [(6) Image spike](docs/parity/06-image-spike.md)
+* [(7) Parity checklist](docs/parity/07-parity-checklist.md)
+* [(8) platformsh-client call-site map](docs/parity/08-platformsh-client-map.md)
 
 ## What works (Fixed)
 
@@ -18,7 +31,7 @@ That SHA is the behavioral floor for Fixed local runtime (config load, service b
 * Package `@lando/upsun`
 * Token cache `upsun.tokens` with **read-old-write-new** from `platformsh.tokens`
 * Host CLI tokens from `~/.platformsh/cache/tokens`
-* Container CLI remains `platform` with `PLATFORMSH_CLI_TOKEN` (not an Upsun CLI cutover)
+* Container CLI is `platform` with `PLATFORMSH_CLI_TOKEN`
 * `lando platform` tooling, `lando pull` / `lando push`, ssh wrap that preserves `PLATFORM_*`
 * Init still uses pinned `platformsh-client@0.1.230` (`getAccountInfo`, `getProject`, `addSshKey`, `getAccessToken`)
 * Flags `--upsun-auth` / `--upsun-site` plus deprecated `--platformsh-auth` / `--platformsh-site`
@@ -26,7 +39,7 @@ That SHA is the behavioral floor for Fixed local runtime (config load, service b
 ## What does not work
 
 * **Flex** — if `.upsun/config.yaml` exists, the plugin fails with: `Flex unsupported until Phase 3; Fixed-only.`
-* No claim of Flex OPEN, Flex relationship rewriting, or `upsun` CLI for Fixed sync
+* No Flex OPEN or Flex relationship rewriting
 * Full Docker OPEN against `docker.registry.platform.sh` is **not verified** here (no Docker daemon). Registry spike: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). That is not an OPEN proof.
 
 ## Migration from `@lando/platformsh`
@@ -42,23 +55,11 @@ plugins:
 # New flags (old --platformsh-* flags still accepted)
 lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site "$PROJECT_NAME"
 
-# Fixed CLI inside the app container is still `platform`
+# Fixed CLI inside the app container is `platform`
 lando platform auth:info
 ```
 
 Existing Lando token caches named `platformsh.tokens` are read automatically. New writes go to `upsun.tokens`.
-
-## platformsh-client call sites
-
-| Site | Methods | Decision |
-| --- | --- | --- |
-| `recipes/upsun/init.js` autocomplete | `getAccountInfo` | **keep** |
-| `recipes/upsun/init.js` post-key | `addSshKey` | **keep** |
-| `recipes/upsun/init.js` git URL | `getAccountInfo`, `getProject`, `getAccessToken` | **keep** |
-| `recipes/upsun/init.js` build | `getAccountInfo` | **keep** |
-| `app.js` post-pull / post-push | `getAccountInfo` | **keep** |
-
-Pinned at `0.1.230`. Not replaced; Fixed E2E of a REST/CLI swap is not proven.
 
 ## Manual test plan
 

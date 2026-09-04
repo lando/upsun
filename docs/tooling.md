@@ -6,7 +6,7 @@ description: Learn about the various out-of-the-box tooling you get with the Lan
 
 ## Platform.sh CLI (Fixed)
 
-Every application container still contains the [Platform.sh CLI](https://docs.platform.sh/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`. This phase does **not** switch Fixed ops to the `upsun` binary.
+Every application container contains the [Platform.sh CLI](https://docs.platform.sh/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`.
 
 ```bash
 # Who am i?

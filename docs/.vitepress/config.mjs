@@ -9,7 +9,7 @@ const landoPlugin = name.replace('@lando/', '');
 
 export default defineConfig({
   title: 'Lando Upsun Plugin (Fixed)',
-  description: 'Lando plugin for Upsun Fixed (.platform) projects.',
+  description: 'Lando plugin for Upsun Fixed. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.',
   landoDocs: 3,
   landoPlugin,
   version,
