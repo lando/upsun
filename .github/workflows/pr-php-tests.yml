@@ -1,7 +1,7 @@
 name: PHP Tests
 
-# Quarantined until a live Docker OPEN spike exists.
-# Restore the Leia matrix from git history after docker pull + lando start is proven.
+# Quarantined until CI Docker / a broader matrix exists. Local OPEN spike already done once.
+# Restore the Leia matrix from git history when CI can run docker pull + lando start across examples.
 on:
   pull_request:
   workflow_dispatch:
@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Quarantine notice
         run: |
-          echo "Leia/OPEN jobs are quarantined until a live Docker OPEN spike exists."
+          echo "Leia/OPEN jobs stay quarantined until CI Docker / a broader matrix exists (local OPEN spike already done once)."
           echo "See docs/parity/06-image-spike.md"

@@ -31,6 +31,25 @@ function checkLandoFile(requiredVersion) {
 }
 
 /**
+ * Check Node.js version in a pin file (.nvmrc / .node-version)
+ * @param {string} filePath - Path to the version file
+ * @param {string} requiredVersion - The required Node.js major version
+ * @returns {string|null} Mismatch message if version differs, null if missing or matches
+ */
+function checkVersionFile(filePath, requiredVersion) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8').trim();
+  const version = raw.replace(/^v/, '').split('.')[0];
+  if (version !== requiredVersion) {
+    return `- ${filePath} has ${raw}, expected ${requiredVersion}`;
+  }
+  return null;
+}
+
+/**
  * Check Node.js version in workflow files
  * @param {string} requiredVersion - The required Node.js version
  * @returns {string[]} Array of mismatch messages
@@ -82,6 +101,11 @@ function main() {
 
     const landoMismatch = checkLandoFile(requiredVersion);
     if (landoMismatch) mismatches.push(landoMismatch);
+
+    ['.nvmrc', '.node-version'].forEach(filePath => {
+      const versionFileMismatch = checkVersionFile(filePath, requiredVersion);
+      if (versionFileMismatch) mismatches.push(versionFileMismatch);
+    });
 
     const workflowMismatches = checkWorkflowFiles(requiredVersion);
     mismatches.push(...workflowMismatches);
