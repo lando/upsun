@@ -1,5 +1,5 @@
 ---
-description: Learn how to sync databases, files, relationships and mounts between your local Lando site and your remote Platform.sh site.
+description: Learn how to sync databases, files, relationships and mounts between local Lando and a remote Fixed environment.
 ---
 
 # Syncing

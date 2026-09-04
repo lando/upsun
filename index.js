@@ -8,15 +8,16 @@ const utils = require('./lib/utils');
  * Stuff
  */
 module.exports = lando => {
-  // Sanitize any platformsh auth
+  // Sanitize auth flags (new + deprecated alias)
   lando.log.alsoSanitize('platformsh-auth');
+  lando.log.alsoSanitize('upsun-auth');
 
   /*
    * This event makes sure that tooling and event commands that are run against an app container
-   * are run through /helpers/psh-exec.sh first so they get the needed envvars eg HOME, USER, and PLATFORM_* set
+   * are run through /helpers/upsun-exec.sh first so they get the needed envvars eg HOME, USER, and PLATFORM_* set
    */
   lando.events.on('pre-command-runner', app => {
-    if (_.get(app, 'config.recipe') === 'platformsh') {
+    if (utils.isUpsunRecipe(_.get(app, 'config.recipe'))) {
       // This is a cheap way to get the list of platform appservers
       // @TODO: will node, python, etc appserver still use `web`?
       const appCache = lando.cache.get(`${app.name}.compose.cache`) || {};
@@ -42,7 +43,7 @@ module.exports = lando => {
    * Same as above but we do something special for SSH
    */
   lando.events.on('cli-ssh-run', data => {
-    if (_.get(data, 'options._app.recipe') === 'platformsh') {
+    if (utils.isUpsunRecipe(_.get(data, 'options._app.recipe'))) {
       // Reset the default from appserver to the closest app
       if (data.options.service === 'appserver') {
         // Reset the default service from appserver to whatever the closest application service is
@@ -57,8 +58,8 @@ module.exports = lando => {
         data.options.command = 'if ! type bash > /dev/null; then sh; else bash; fi';
       }
 
-      // Wrap commands in /helpers/psh-exec.sh
-      data.options.command = ['/helpers/psh-exec.sh', '/bin/sh', '-c', data.options.command];
+      // Wrap commands in /helpers/upsun-exec.sh (still unsets PLATFORM_* for `platform` CLI)
+      data.options.command = ['/helpers/upsun-exec.sh', '/bin/sh', '-c', data.options.command];
     }
   });
 };

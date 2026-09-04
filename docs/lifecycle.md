@@ -41,9 +41,9 @@ Here are some key things to know about each step and what Lando does to change t
 4. BOOT will send a ping to a spoofed RPC agent to mimic what platform expects
 5. BOOT will finish by running `/etc/platform/boot`
 
-Lando puts all this logic in `scripts/psh-boot.sh` and uses it for both the `BOOT` and `START` phases by putting it into `/scripts` inside of each container. Lando's entrypoint script will run anything it finds in this directory before it hands off to the "main" process/command. Also note that `/etc/platform/boot` will finish by handing off to `/etc/platform/start`.
+Lando puts all this logic in `scripts/upsun-boot.sh` (compat wrapper: `psh-boot.sh`) and uses it for both the `BOOT` and `START` phases by putting it into `/scripts` inside of each container. Lando's entrypoint script will run anything it finds in this directory before it hands off to the "main" process/command. Also note that `/etc/platform/boot` will finish by handing off to `/etc/platform/start`.
 
-Additionally, Lando will run `scripts/psh-recreate-users.sh` before anything else. This script handles host:container permission mapping.
+Additionally, Lando will run `scripts/upsun-recreate-users.sh` before anything else. This script handles host:container permission mapping.
 
 On platform.sh application containers run as `web:x:10000:10000::/app:/bin/bash` and _most_ services run as `app:x:1000:1000::/app:/bin/bash`. However locally we need whatever user is running process 1 to match the host (eg yours) uid and groupid.
 
@@ -54,7 +54,7 @@ The platform.sh BUILD step uses an internal Lando `build` step behind the scenes
 1. Only runs on the initial `lando start` and subsequent `lando rebuilds`
 2. Runs _before_ the container STARTS and before any user-defined build steps
 
-The BUILD step will use `scripts/psh-build.sh`. This has a few differences from Platform
+The BUILD step will use `scripts/upsun-build.sh`. This has a few differences from Platform
 
 1. BUILD will set `$HOME` to `/var/www` instead of `/app` so build artifacts/caches dont potentially in your git repo
 2. BUILD will install the platform CLI first if it needs to
@@ -79,4 +79,4 @@ OPEN is the step that most diverges from what Lando expects in that it requires 
 
 Once this has completed each application container will be "open for business" and ready to handle requests. This is also required to set `PLATFORM_RELATIONSHIPS` which is very important so applications can easily connect to services.
 
-Behind the scenes we use the helper script `scripts/psh-open.sh`. We also do the open logic in `app.js` in a `post-start` event.
+Behind the scenes we use the helper script `scripts/upsun-open.sh`. We also do the open logic in `app.js` in a `post-start` event. OPEN still sets `PLATFORM_RELATIONSHIPS` from Fixed service output.

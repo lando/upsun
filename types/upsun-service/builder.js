@@ -14,7 +14,7 @@ module.exports = {
     constructor(id, options = {}, ...sources) {
       // Get some stuff from our parsed platform config
       const runConfigPath = _.get(options, 'runConfig.file');
-      const bootScript = path.join(options.userConfRoot, 'scripts', 'psh-boot.sh');
+      const bootScript = path.join(options.userConfRoot, 'scripts', 'upsun-boot.sh');
 
       // If portforward is not set by the user than compute its value
       if (_.isNil(options.portforward)) options.portforward = !_.isEmpty(options.platformsh.creds);
@@ -48,10 +48,10 @@ module.exports = {
         },
       });
 
-      // Set the docker things we need for all appservers
+      // Non-app services are _platformsh_service, not appservers (copy-paste bug).
       const service = {
         command: 'exec init',
-        environment: {LANDO_SERVICE_TYPE: '_platformsh_appserver'},
+        environment: {LANDO_SERVICE_TYPE: '_platformsh_service'},
         privileged: true,
         volumes: [
           `${runConfigPath}:/run/config.json`,

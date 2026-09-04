@@ -1,22 +1,26 @@
 ---
 title: Configuration
-description: Learn how to configure the Lando Platform.sh recipe.
+description: Learn how to configure the Lando Upsun Fixed recipe.
 ---
 
 # Configuration
+
+::: warning Fixed-only
+Flex (`.upsun/config.yaml`) is a hard error. This page documents Fixed `.platform*` files only.
+:::
 
 While Lando [recipes](https://docs.lando.dev/core/v3/recipes.html) sets sane defaults so they work out of the box, they are also [configurable](https://docs.lando.dev/core/v3/recipes.html#config).
 
 Here are the configuration options, set to the default values, for this recipe's [Landofile](https://docs.lando.dev/core/v3). If you are unsure about where this goes or what this means we *highly recommend* scanning the [recipes documentation](https://docs.lando.dev/core/v3/recipes.html) to get a good handle on how the magicks work.
 
 ```yaml
-recipe: platformsh
+recipe: upsun
 config:
   id: YOURSITEID
   overrides: {}
 ```
 
-You will immediately notice that the default `platformsh` recipe Landofile does not contain much. This is because Lando uses the exact same images and configuration mechanisms locally as Platform.sh does in production.
+`recipe: platformsh` remains a deprecated alias for `recipe: upsun`. The Landofile stays small because Lando uses the same Fixed images and `.platform*` files as production.
 
 This means that instead of modifying your Landofile to add, edit or remove the services, dependencies, build steps, etc you need to run your application you will want to modify your Platform.sh configuration according to their documentation and then do the usual `lando rebuild` for those changes to be applied.
 
@@ -144,7 +148,7 @@ Platform.sh application language and service configuration is generally optimize
 
 ```yaml
 name: myproject
-recipe: platformsh
+recipe: upsun
 config:
   id: PROJECTID
   overrides:
@@ -174,7 +178,7 @@ However, some of these, such as `APP_ENV=prod` do not make a ton of sense for lo
 
 ```yaml
 name: platformsh-drupal8
-recipe: platformsh
+recipe: upsun
 config:
   id: PROJECTID
   overrides:

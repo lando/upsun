@@ -1,5 +1,5 @@
 name: lando-platformsh-mariadb-10.2
-recipe: platformsh
+recipe: upsun
 config:
   id: DISCONNECTED
 
@@ -7,4 +7,4 @@ config:
 # This is important because it lets lando know to test against the plugin in this repo
 # DO NOT REMOVE THIS!
 plugins:
-  "@lando/platformsh": ./../../
+  "@lando/upsun": ./../../

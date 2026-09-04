@@ -8,15 +8,15 @@ const {name, version} = require('../../package.json');
 const landoPlugin = name.replace('@lando/', '');
 
 export default defineConfig({
-  title: 'Lando Platformsh Plugin',
-  description: 'The offical Lando plugin for Platformsh.',
+  title: 'Lando Upsun Plugin (Fixed)',
+  description: 'Lando plugin for Upsun Fixed. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.',
   landoDocs: 3,
   landoPlugin,
   version,
   head: [
     ['meta', {name: 'viewport', content: 'width=device-width, initial-scale=1'}],
-    ['link', {rel: 'icon', href: '/platformsh/favicon.ico', size: 'any'}],
-    ['link', {rel: 'icon', href: '/platformsh/favicon.svg', type: 'image/svg+xml'}],
+    ['link', {rel: 'icon', href: '/plugins/upsun/favicon.ico', size: 'any'}],
+    ['link', {rel: 'icon', href: '/plugins/upsun/favicon.svg', type: 'image/svg+xml'}],
   ],
   themeConfig: {
     sidebar: sidebar(),
@@ -51,10 +51,10 @@ function sidebar() {
       text: 'Help & Support',
       collapsed: false,
       items: [
-        {text: 'GitHub', link: 'https://github.com/lando/platformsh/issues/new/choose'},
+        {text: 'GitHub', link: 'https://github.com/lando/upsun/issues/new'},
         {text: 'Slack', link: 'https://www.launchpass.com/devwithlando'},
         {text: 'Contact Us', link: '/support'},
-        {text: 'Examples', link: 'https://github.com/lando/platformsh/tree/main/examples'},
+        {text: 'Examples', link: 'https://github.com/lando/upsun/tree/main/examples'},
       ],
     },
     {text: 'Guides', link: '/guides', activeMatch: '/guides'},

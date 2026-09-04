@@ -1,3 +1,12 @@
+## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
+
+* Rebrand package/recipe to `@lando/upsun` / `upsun` (deprecated `platformsh` alias).
+* Fixed-only: Flex (`.upsun/config.yaml`) is a hard error until Phase 3.
+* Token cache `upsun.tokens` with read-old-write-new from `platformsh.tokens`.
+* Keep `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `platformsh-client@0.1.230` (auth path, code).
+* OPEN / `PLATFORM_RELATIONSHIPS` runtime deferred until a live Docker proof.
+* Seed: lando/platformsh tip `9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0` (50 commits ahead of tag `v0.10.0`; seed `package.json` said `0.9.0`).
+
 ## v0.10.0 - [March 8, 2024](https://github.com/lando/platformsh/releases/tag/v0.10.0)
   * Updated to latest database services.
 

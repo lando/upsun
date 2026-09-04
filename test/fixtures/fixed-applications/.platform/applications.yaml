@@ -1,0 +1,20 @@
+- name: web
+  type: php:8.0
+  source:
+    root: "web"
+  web:
+    locations:
+      "/":
+        root: "."
+        passthru: "/index.php"
+  relationships:
+    database: "db:mysql"
+- name: api
+  type: php:8.0
+  source:
+    root: "api"
+  web:
+    locations:
+      "/":
+        root: "."
+        passthru: "/index.php"

@@ -1,54 +1,48 @@
 ---
-description: Learn how to get started with the Lando Platform.sh recipe.
+description: Learn how to get started with the Lando Upsun Fixed recipe.
 ---
 
 # Getting Started
 
 ## Requirements
 
-Before you get started with this recipe we assume that you have:
+1. [Installed Lando](https://docs.lando.dev/getting-started/installation.html)
+2. A **Fixed** project (`.platform.app.yaml` and/or `.platform/applications.yaml`)
+3. A Platform.sh API token (`PLATFORMSH_CLI_TOKEN`) for init/pull/push
 
-1. [Installed Lando](https://docs.lando.dev/getting-started/installation.html) and gotten familiar with [its basics](https://docs.lando.dev/cli/)
-2. [Initialized](https://docs.lando.dev/cli/init.html) a [Landofile](https://docs.lando.dev/core/v3) for your codebase for use with this recipe
-3. Read about the various [services](https://docs.lando.dev/core/v3/lando-service.html), [tooling](https://docs.lando.dev/core/v3/tooling.html), [events](https://docs.lando.dev/core/v3/events.html) and [routing](https://docs.lando.dev/core/v3/proxy.html) Lando offers.
+Flex projects (`.upsun/config.yaml`) are rejected until Phase 3.
 
 ## Quick Start
 
-You can also run the following commands to try out this recipe on one of your Platform.sh sites.
-
 ```bash
-# Go through interactive prompts to get your site from platformsh
-lando init --source platformsh
+# Interactive clone (Fixed)
+lando init --source upsun
 
-# OR do it non-interactively
-# NOTE: You will want to make sure you set $PLATFORMSH_CLI_TOKEN
-# and $PLATFORMSH_SITE_NAME to values that make sense for you
+# Non-interactive
+lando init \
+  --source upsun \
+  --upsun-auth "$PLATFORMSH_CLI_TOKEN" \
+  --upsun-site "$PLATFORMSH_SITE_NAME"
+
+# Deprecated aliases still work
 lando init \
   --source platformsh \
   --platformsh-auth "$PLATFORMSH_CLI_TOKEN" \
   --platformsh-site "$PLATFORMSH_SITE_NAME"
 
-
-# OR if you already have your platform code locally
+# Already have Fixed code locally
 cd /path/to/repo
-lando init \
-  --source cwd \
-  --recipe platformsh
+lando init --source cwd --recipe upsun
 
-# Start it up
 lando start
-
-# Import any relevant relationships or mounts
-# NOTE: You will likely need to change the below to specify
-# relationships and mounts that make sense for your application
-# See further below for more information about lando pull
 lando pull -r database -m web/sites/default/files
-
-# List information about this app.
 lando info
 ```
 
-**Note that if your `platformsh` project requires environment variables set in the [Platform Management Console](https://docs.platform.sh/administration/web/configure-environment.html) you will need to set those manually!**
+Inside the app container the CLI is still `platform`:
 
-See the [Environment Variables](./config.md#environment-variables) section for details.
+```bash
+lando platform auth:info
+```
 
+Remote dashboard variables are not pulled automatically. Set them locally as before.

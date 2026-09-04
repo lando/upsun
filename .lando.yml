@@ -1,4 +1,4 @@
-name: lando-platformsh-plugin
+name: lando-upsun-plugin
 services:
   node:
     type: node:18

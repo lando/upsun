@@ -12,28 +12,38 @@ const pshconf = require('./lib/config');
 const runconf = require('./lib/run');
 const tooling = require('./lib/tooling');
 const utils = require('./lib/utils');
+const flavor = require('./lib/flavor');
 const warnings = require('./lib/warnings');
 
 const PlatformshApiClient = require('platformsh-client').default;
+const tokens = require('./lib/tokens');
 
-// Only do this on platformsh recipes
+// Only do this on upsun / deprecated platformsh recipes
 module.exports = (app, lando) => {
-  if (_.get(app, 'config.recipe') === 'platformsh') {
+  if (utils.isUpsunRecipe(_.get(app, 'config.recipe'))) {
     // Reset the ID if we can
     app.id = _.get(app, 'config.config.id', app.id);
     app.toolingCache = `${app.name}.tooling.cache`;
     app.toolingRouterCache = `${app.name}.tooling.router`;
-    app.log.verbose('identified a platformsh app');
+    app.log.verbose('identified an upsun Fixed app');
     app.log.debug('reset app id to %s', app.id);
-    // Sanitize any platformsh auth
+    // Sanitize auth flags (new + deprecated alias)
     app.log.alsoSanitize('platformsh-auth');
+    app.log.alsoSanitize('upsun-auth');
 
     // Explicitly add a path for config and make sure it exists
     app.configPath = path.join(app._config.userConfRoot, 'config', app.name);
     if (!fs.existsSync(app.configPath)) mkdirp.sync(app.configPath);
     app.log.debug(`ensured ${app.configPath} exists`);
 
-    // Start by loading in all the platform files we can
+    // Flex is a hard abort. lando.log.error does not throw; a soft return leaves
+    // app.platformsh unset and recipes/upsun/builder.js TypeErrors on closestApp.
+    if (flavor.isFlex(app.root)) {
+      app.addWarning(warnings.flexUnsupported());
+      flavor.assertFixedOnly(app.root);
+    }
+
+    // Start by loading in all the Fixed .platform files we can
     app.platformsh = {config: pshconf.loadConfigFiles(app.root)};
 
     // Add in local application overrides as needed
@@ -66,8 +76,9 @@ module.exports = (app, lando) => {
     // And then augment with a few other things
     app.platformsh.domain = `${app.name}.${app._config.domain}`;
     app.platformsh.id = app.id;
-    app.platformsh.tokenCache = 'platformsh.tokens';
-    app.platformsh.tokens = lando.cache.get(app.platformsh.tokenCache) || [];
+    app.platformsh.tokenCache = tokens.TOKEN_CACHE;
+    app.platformsh.legacyTokenCache = tokens.LEGACY_TOKEN_CACHE;
+    app.platformsh.tokens = tokens.readTokens(lando);
     app.log.silly('loaded platform config files', app.platformsh);
 
     /*
@@ -84,7 +95,8 @@ module.exports = (app, lando) => {
           .map(dirent => ` - ${path.join(app.root, dirent.name, '.platform.app.yaml')}`)
           .concat(path.join(app.root, '.platform', 'applications.yaml'))
           .join(os.EOL);
-        lando.log.error(`Could not detect any supported Platform.sh applications in any of: ${os.EOL}${locations}`);
+        const emptyMsg = 'Could not detect any supported Upsun Fixed (.platform) applications in any of:';
+        lando.log.error(`${emptyMsg} ${os.EOL}${locations}`);
       }
 
       /*
@@ -176,9 +188,9 @@ module.exports = (app, lando) => {
           return api.getAccountInfo().then(me => {
             // This is a good token, lets update our cache
             const cache = {token: answers.auth, email: me.mail, date: _.toInteger(_.now() / 1000)};
-            // Update lando's store of platformsh machine tokens
-            const tokens = lando.cache.get(app.platformsh.tokenCache) || [];
-            lando.cache.set(app.platformsh.tokenCache, utils.sortTokens(tokens, [cache]), {persist: true});
+            // Update lando's store of tokens (write-new upsun.tokens, after read-old merge)
+            const cached = tokens.readTokens(lando);
+            tokens.writeTokens(lando, utils.sortTokens(cached, [cache]));
             // Update app metdata
             const metaData = lando.cache.get(`${app.name}.meta.cache`);
             lando.cache.set(`${app.name}.meta.cache`, _.merge({}, metaData, cache), {persist: true});
@@ -314,7 +326,7 @@ module.exports = (app, lando) => {
         // Open everything
         return lando.Promise.map(services, service => lando.Promise.retry(() => lando.engine.run({
            id: `${app.project}_${service.name}_1`,
-           cmd: ['/helpers/psh-open.sh', service.platformsh.opener],
+           cmd: ['/helpers/upsun-open.sh', service.platformsh.opener],
            compose: app.compose,
            project: app.project,
            opts: {
@@ -360,7 +372,7 @@ module.exports = (app, lando) => {
             // OPEN
             return lando.engine.run({
               id: `${app.project}_${appserver.name}_1`,
-              cmd: ['/helpers/psh-open.sh', JSON.stringify({relationships: openPayload})],
+              cmd: ['/helpers/upsun-open.sh', JSON.stringify({relationships: openPayload})],
               compose: app.compose,
               project: app.project,
               opts: {

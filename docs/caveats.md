@@ -5,9 +5,11 @@ description: Learn about caveats and known issues with the Lando Platform.sh rec
 
 # Caveats and known issues
 
-Since this is a `beta` release, there are a few known issues and workarounds to be aware of. We also recommend that you consult GitHub for [Platform.sh issues](https://github.com/lando/platformsh/issues).
+This is a **Fixed-only** WIP. Flex (`.upsun/config.yaml`) is rejected until Phase 3. File issues on [lando/upsun](https://github.com/lando/upsun/issues).
 
-If you encounter a problem that doesn't already have an issue, we _highly encourage_ you to [post an issue](https://github.com/lando/platformsh/issues/new/choose).
+## Flex
+
+If `.upsun/config.yaml` exists, the plugin throws `Flex unsupported until Phase 3; Fixed-only.` An empty `.upsun/` directory is not Flex and is ignored.
 
 ## `$HOME` considerations
 
@@ -77,7 +79,7 @@ runtime:
 Due to how Platform.sh sets up `xdebug` it should be ok to have this on even in production. However, if you would like to enable it _only_ on Lando you can override the extensions in your Landofile. Note that the entire array is replaced in the overrides so your Landofile should reflect _all_ the extensions you want to use not just the difference.
 
 ```yaml
-recipe: platformsh
+recipe: upsun
 config:
   id: PROJECT_ID
   overrides:
