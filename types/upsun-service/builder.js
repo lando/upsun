@@ -48,10 +48,10 @@ module.exports = {
         },
       });
 
-      // Set the docker things we need for all appservers
+      // Non-app services are _platformsh_service, not appservers (copy-paste bug).
       const service = {
         command: 'exec init',
-        environment: {LANDO_SERVICE_TYPE: '_platformsh_appserver'},
+        environment: {LANDO_SERVICE_TYPE: '_platformsh_service'},
         privileged: true,
         volumes: [
           `${runConfigPath}:/run/config.json`,
