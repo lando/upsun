@@ -8,7 +8,8 @@ description: Learn how to get started with the Lando Upsun Fixed recipe.
 
 1. [Installed Lando](https://docs.lando.dev/getting-started/installation.html)
 2. A **Fixed** project (`.platform.app.yaml` and/or `.platform/applications.yaml`)
-3. A Platform.sh API token (`PLATFORMSH_CLI_TOKEN`) for init/pull/push
+3. An Upsun Fixed API token (`PLATFORMSH_CLI_TOKEN`) for init/pull/push
+4. Landofile `config.id` set to the Fixed project ID (written by `lando init`); git branch matching the remote environment
 
 Flex projects (`.upsun/config.yaml`) are rejected until Phase 3.
 

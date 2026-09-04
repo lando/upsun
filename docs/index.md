@@ -15,6 +15,7 @@ This plugin is a WIP revival of `@lando/platformsh`. Phase-0/1 loads **Fixed** c
 * Renames the package/recipe to `@lando/upsun` / `upsun`
 * Loads Fixed `.platform*` config and rejects Flex (`.upsun/config.yaml`)
 * Keeps the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` auth path
+* Phase-2 pull/push: resume/activate before parent fallback; Landofile `config.id` for `-p`. **Not E2E-proven** without a live token.
 
 OPEN / `PLATFORM_RELATIONSHIPS` at runtime is **deferred** until a live Docker proof. Flex local OPEN is a hard error until Phase 3.
 

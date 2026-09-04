@@ -20,6 +20,8 @@ config:
   overrides: {}
 ```
 
+`config.id` is the **Fixed project ID**. `lando init --source upsun` writes it. Pull/push use it as `PLATFORM_PROJECT`, pass `-p` to `platform`, and run `platform project:set-remote` so the CLI is not left to auto-detect alone. It should match `platform project:info id` and, when present, `.platform/local/project.yaml`. The current git branch should match the remote environment id (override with `lando pull --env`).
+
 `recipe: platformsh` remains a deprecated alias for `recipe: upsun`. The Landofile stays small because Lando uses the same Fixed images and `.platform*` files as production.
 
 This means that instead of modifying your Landofile to add, edit or remove the services, dependencies, build steps, etc you need to run your application you will want to modify your Platform.sh configuration according to their documentation and then do the usual `lando rebuild` for those changes to be applied.

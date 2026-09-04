@@ -4,7 +4,7 @@ Seed: `lando/platformsh` `9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0` (tip; 50 com
 
 Phase-0/1 is **rename + Fixed gate + auth path preserved (code)**. Not product-complete OPEN parity. Branding is `@lando/upsun` / recipe `upsun`. Fixed ops stay on `platform` + `PLATFORMSH_CLI_TOKEN`. Flex is not supported.
 
-One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @ `836c0b001d824477d4c372cbd809caa842b4ab73`. Pull/push, live token, Flex, and the broader OPEN matrix are still **defer**. See [(6) Image spike](06-image-spike.md).
+One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @ `836c0b001d824477d4c372cbd809caa842b4ab73`. Pull/push are **in progress** (code + unit tests; **needs a live `PLATFORMSH_CLI_TOKEN` before anyone calls this E2E**). Flex and the broader OPEN matrix are still **defer**. See [(6) Image spike](06-image-spike.md).
 
 | Item | Status | Notes |
 | --- | --- | --- |
@@ -16,7 +16,8 @@ One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @
 | Service builders | **ship** | Type names still `platformsh-*`; dirs are `services/upsun-*` / `types/upsun-*`. |
 | BOOT / BUILD / START / OPEN + `/run/config.json` | **proven (local)** | `examples/mariadb-10.4` only (`lando start` EXIT 0; app/mariadb/multi green; URLs 502 then 200). Broader matrix still **defer**. |
 | `PLATFORM_RELATIONSHIPS` runtime | **proven (local)** | Same spike: PHP `mariadb.php` / `database.php` returned seeded astronaut rows. Broader matrix still **defer**. |
-| `lando platform` / pull / push / ssh | **defer** (runtime) | Scripts still call `platform`. Host token / pull / push not exercised. |
+| `lando platform` / ssh | **defer** (runtime) | Scripts still call `platform`. Host token not exercised. |
+| `lando pull` / `lando push` | **in progress** | Fixed contract: `platform` + `PLATFORMSH_CLI_TOKEN`. Space-form `-r`/`-m` fixed. Landofile `config.id` → `PLATFORM_PROJECT` / `-p` / `project:set-remote`. Paused → `environment:resume`; inactive → `environment:activate`; parent fallback only if wake fails (or `--no-parent` / `--env`). **Not E2E-proven** — needs a live token. |
 | Proxy / routes | **ship** (code) | Same `{default}` parser. Local spike URLs reached 200 after OPEN. |
 | Flex local OPEN | **wontfix** (Phase 3) | Hard abort if `.upsun/config.yaml` exists. Not tested in the local spike. |
 | Leia example jobs | **quarantine** | Still disabled on PRs. Packaging/CI hygiene does not restore Leia. One local spike is not a Leia un-quarantine. |
