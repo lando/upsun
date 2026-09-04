@@ -51,6 +51,10 @@ function checkWorkflowFiles(requiredVersion) {
       for (const key in obj) {
         if (key === 'node-version' && typeof obj[key] === 'string') {
           const version = obj[key].replace(/['"]/g, '');
+          // Skip GitHub Actions expressions like ${{ matrix.node-version }}
+          if (version.includes('${{')) {
+            continue;
+          }
           if (version !== requiredVersion) {
             mismatches.push(`- ${filePath} has Node.js ${version}, expected ${requiredVersion}`);
           }
