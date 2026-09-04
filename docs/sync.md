@@ -13,7 +13,7 @@ Flex (`.upsun/config.yaml`) is a hard abort. Flex sync is not this phase.
 :::
 
 ::: warning Not live-proven here
-Pull/push are **in progress**. Unit tests cover flag parsing, project-id wiring, and resume/activate fallback. They are **not** an E2E proof. A live `PLATFORMSH_CLI_TOKEN` run is still required before calling this OPEN.
+Pull/push are **in progress**. Unit tests cover flag parsing, project-id wiring, and resume/activate fallback. They are **not** an E2E proof. A live `PLATFORMSH_CLI_TOKEN` run is still required before calling this E2E.
 :::
 
 Only database relationships are syncable.
@@ -41,7 +41,8 @@ If the target environment is not in the active list (`platform env -I`):
 2. **paused** → `platform environment:resume -y`
 3. **inactive** → `platform environment:activate -y`
 4. Only if that fails (or is not allowed) fall back to the environment's **parent**
-5. `--no-parent` or an explicit `--env` disables parent fallback (fail instead)
+5. After wake or parent switch, the chosen branch must appear in `platform env -I` (parent is woken if paused/inactive) or pull/push fails
+6. `--no-parent` or an explicit `--env` disables parent fallback (fail instead)
 
 Push still refuses production (`master`), including after a parent fallback.
 

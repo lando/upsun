@@ -1,6 +1,6 @@
 ## Unreleased
 
-* Phase-2 Fixed pull/push: resume/activate paused or inactive envs before parent fallback; wire Landofile `config.id` as `PLATFORM_PROJECT` / `-p` / `project:set-remote`; fix space-form `-r`/`-m`; add `--env` / `--project` / `--no-parent`. Still needs a live `PLATFORMSH_CLI_TOKEN` before E2E.
+* Phase-2 Fixed pull/push: resume/activate paused or inactive envs before parent fallback; re-check `platform env -I` after wake or parent switch (wake parent if paused/inactive, else fail); wire Landofile `config.id` as `PLATFORM_PROJECT` / `-p` / `project:set-remote`; fix space-form `-r`/`-m`; add `--env` / `--project` / `--no-parent`. Still needs a live `PLATFORMSH_CLI_TOKEN` before E2E.
 * Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI, VitePress 1.5+ for the theme. Leia stays quarantined.
 
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)

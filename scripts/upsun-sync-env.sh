@@ -151,10 +151,30 @@ upsun_try_wake_env() {
   esac
 }
 
+# Last status read by upsun_require_active (empty if unread / unreadable).
+UPSUN_LAST_ENV_STATUS=""
+
+# Confirm $1 is in the active list, waking it if paused/inactive. Green on success.
+upsun_require_active() {
+  local branch="$1"
+  UPSUN_LAST_ENV_STATUS=""
+  if upsun_env_is_active "$branch"; then
+    lando_green "Verified the $branch environment is active"
+    return 0
+  fi
+  UPSUN_LAST_ENV_STATUS="$(upsun_env_status "$branch")"
+  if [ -n "$UPSUN_LAST_ENV_STATUS" ] \
+      && upsun_try_wake_env "$branch" "$UPSUN_LAST_ENV_STATUS" \
+      && upsun_env_is_active "$branch"; then
+    lando_green "Verified the $branch environment is active"
+    return 0
+  fi
+  return 1
+}
+
 # Resolve PLATFORM_BRANCH to an environment we can sync against.
 upsun_ensure_active_environment() {
   local original="$PLATFORM_BRANCH"
-  local status=""
   local parent=""
   local skip_parent=0
 
@@ -164,28 +184,27 @@ upsun_ensure_active_environment() {
 
   lando_pink "Verifying $PLATFORM_BRANCH is an active environment..."
 
-  if upsun_env_is_active "$PLATFORM_BRANCH"; then
-    lando_green "Verified the $PLATFORM_BRANCH environment is active"
-    return 0
-  fi
-
-  status="$(upsun_env_status "$PLATFORM_BRANCH")"
-  if [ -n "$status" ] && upsun_try_wake_env "$PLATFORM_BRANCH" "$status"; then
-    lando_green "Verified the $PLATFORM_BRANCH environment is active"
+  if upsun_require_active "$PLATFORM_BRANCH"; then
     return 0
   fi
 
   if [ "$skip_parent" = "1" ]; then
-    lando_red "Could not resume $original (status: ${status:-unknown}) and parent fallback is disabled"
+    lando_red "Could not resume $original (status: ${UPSUN_LAST_ENV_STATUS:-unknown}) and parent fallback is disabled"
     return 1
   fi
 
   parent="$(upsun_platform environment:info -e "$original" parent 2>/dev/null || echo "master")"
-  if [ -n "$status" ]; then
-    lando_yellow "Could not resume $original (status: $status); using the parent environment ($parent) instead"
+  if [ -n "$UPSUN_LAST_ENV_STATUS" ]; then
+    lando_yellow "Could not resume $original (status: $UPSUN_LAST_ENV_STATUS); using the parent environment ($parent) instead"
   else
     lando_yellow "Branch $original is not an active environment; using the parent environment ($parent) instead"
   fi
   PLATFORM_BRANCH="$parent"
-  lando_green "Verified the $PLATFORM_BRANCH environment is active"
+
+  if upsun_require_active "$PLATFORM_BRANCH"; then
+    return 0
+  fi
+
+  lando_red "Could not verify $PLATFORM_BRANCH is an active environment (status: ${UPSUN_LAST_ENV_STATUS:-unknown})"
+  return 1
 }

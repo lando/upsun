@@ -124,14 +124,22 @@ describe('upsun_ensure_active_environment', () => {
    */
   function ensure(branch, extraEnv = {}) {
     const log = path.join(os.tmpdir(), `mock-platform-${process.pid}-${Date.now()}.log`);
-    const out = runHarness(['ensure', branch], {MOCK_PLATFORM_LOG: log, ...extraEnv});
-    const logged = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
     try {
-      fs.unlinkSync(log);
-    } catch {
-      // ignore
+      const out = runHarness(['ensure', branch], {MOCK_PLATFORM_LOG: log, ...extraEnv});
+      const logged = fs.existsSync(log) ? fs.readFileSync(log, 'utf8') : '';
+      return {out, log: logged};
+    } finally {
+      try {
+        fs.unlinkSync(log);
+      } catch {
+        // ignore
+      }
+      try {
+        fs.unlinkSync(`${log}.woken`);
+      } catch {
+        // ignore
+      }
     }
-    return {out, log: logged};
   }
 
   it('keeps an already-active branch', () => {
@@ -153,15 +161,48 @@ describe('upsun_ensure_active_environment', () => {
     log.should.match(/environment:activate/);
   });
 
-  it('falls back to parent when resume fails', () => {
+  it('falls back to parent when resume fails and parent is active', () => {
     const {out, log} = ensure('feat', {
-      MOCK_ACTIVE: '',
+      MOCK_ACTIVE: 'main',
       MOCK_STATUS: 'paused',
       MOCK_RESUME_RC: '1',
       MOCK_PARENT: 'main',
     });
     out.should.match(/BRANCH=main/);
     log.should.match(/environment:resume/);
+  });
+
+  it('hard-fails when resume succeeds but env is still not in the active list', () => {
+    let failed = false;
+    try {
+      ensure('feat', {
+        MOCK_ACTIVE: '',
+        MOCK_STATUS: 'paused',
+        MOCK_RESUME_RC: '0',
+        MOCK_WAKE_NO_LIST: '1',
+        UPSUN_SYNC_NO_PARENT: '1',
+      });
+    } catch (error) {
+      failed = true;
+      String(error.stderr || error.message).should.match(/parent fallback is disabled/);
+    }
+    failed.should.equal(true);
+  });
+
+  it('hard-fails when parent is not active and cannot be woken', () => {
+    let failed = false;
+    try {
+      ensure('feat', {
+        MOCK_ACTIVE: '',
+        MOCK_STATUS: 'paused',
+        MOCK_RESUME_RC: '1',
+        MOCK_PARENT: 'main',
+      });
+    } catch (error) {
+      failed = true;
+      String(error.stderr || error.message).should.match(/Could not verify main is an active environment/);
+    }
+    failed.should.equal(true);
   });
 
   it('does not fall back when --no-parent is set', () => {
@@ -178,6 +219,38 @@ describe('upsun_ensure_active_environment', () => {
       String(error.stderr || error.message).should.match(/parent fallback is disabled/);
     }
     failed.should.equal(true);
+  });
+
+  it('does not fall back when UPSUN_SYNC_ENV_EXPLICIT=1', () => {
+    let failed = false;
+    try {
+      ensure('feat', {
+        MOCK_ACTIVE: '',
+        MOCK_STATUS: 'paused',
+        MOCK_RESUME_RC: '1',
+        UPSUN_SYNC_ENV_EXPLICIT: '1',
+      });
+    } catch (error) {
+      failed = true;
+      String(error.stderr || error.message).should.match(/parent fallback is disabled/);
+    }
+    failed.should.equal(true);
+  });
+});
+
+describe('upsun_bind_project', () => {
+  it('records project:set-remote in the bind-mode mock log', () => {
+    const log = path.join(os.tmpdir(), `mock-platform-bind-${process.pid}-${Date.now()}.log`);
+    try {
+      runHarness(['bind', 'abc123'], {MOCK_PLATFORM_LOG: log});
+      fs.readFileSync(log, 'utf8').should.match(/project:set-remote/);
+    } finally {
+      try {
+        fs.unlinkSync(log);
+      } catch {
+        // ignore
+      }
+    }
   });
 });
 
