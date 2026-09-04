@@ -13,7 +13,7 @@ At the very least you will need to have the following installed:
 
 * [Lando 3.21.0+](https://docs.lando.dev/getting-started/installation.html) preferably installed [from source](https://docs.lando.dev/install/source.html).
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-* [Node 18](https://nodejs.org/dist/latest-v18.x/)
+* [Node 20](https://nodejs.org/dist/latest-v20.x/)
 
 ## Installation
 
@@ -58,8 +58,11 @@ npm run docs:dev
 # build docs locally
 npm run docs:build
 
+# multi-version production docs build
+npm run docs:mvb
+
 # preview built docs locally
-npm run docs:build
+npm run docs:preview
 ```
 
 If you are more interested in the internals of the docs they use [VitePress](https://vitepress.dev/) and our [SPECIAL THEME](https://vitepress-theme-default-plus.lando.dev).
@@ -124,6 +127,8 @@ npm run test:leia
 # Run the tests for a single example
 npx leia examples/mariadb-10.2/README.md -c 'Destroy tests'
 ```
+
+Leia example jobs stay quarantined on PRs. Packaging/CI hygiene does not restore that matrix.
 
 If you've created new testable examples then you will also need to let GitHub Actions know so they can run on pull requests.
 

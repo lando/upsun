@@ -18,7 +18,7 @@ let platformshSites = [];
  * Accept both --upsun-* and deprecated --platformsh-* flags.
  *
  * @param {object} answers Init answers or options.
- * @return {object}
+ * @returns {object}
  */
 const normalizeInitOptions = answers => {
   answers['platformsh-auth'] = answers['platformsh-auth'] || answers['upsun-auth'];

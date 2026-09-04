@@ -16,7 +16,7 @@
     "platformsh"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "lando": {},
   "main": "index.js",
@@ -35,10 +35,11 @@
   },
   "scripts": {
     "coverage": "nyc report --reporter=text-lcov | coveralls",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
+    "docs:build": "LANDO_MVB_VERSION=$(git describe --tags --always --abbrev=1 --match=\"v[0-9].*\") vitepress build docs",
+    "docs:dev": "LANDO_MVB_VERSION=$(git describe --tags --always --abbrev=1 --match=\"v[0-9].*\") vitepress dev docs",
+    "docs:mvb": "npx mvb docs",
     "docs:preview": "vitepress preview docs",
-    "lint": "eslint . --ext .js --ext .mjs ",
+    "lint": "eslint . --config eslint.config.js",
     "test:unit": "nyc --reporter=html --reporter=text mocha --timeout 5000 test/**/*.spec.js",
     "test:leia": "leia \"examples/**/README.md\" -c 'Destroy tests' --stdin",
     "test": "npm run lint && npm run test:unit"
@@ -50,17 +51,20 @@
     "tar": "^6.1.11"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "^7.23.10",
+    "@babel/eslint-parser": "^7.25.7",
+    "@lando/core": "^3",
     "@lando/leia": "^0.6.4",
     "@lando/vitepress-theme-default-plus": "^1.2.0",
     "chai": "^4.3.4",
     "command-line-test": "^1.0.10",
-    "eslint": "^7.32.0",
-    "eslint-config-google": "^0.9.1",
-    "eslint-plugin-vue": "^8.0.3",
+    "eslint": "^9.12.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-jsdoc": "^50.3.1",
+    "globals": "^17.12.0",
     "mocha": "^9.1.2",
     "nyc": "^15.1.0",
-    "vitepress": "^1.0.0-rc.42"
+    "vitepress": "^1.5.0",
+    "yaml": "^2.6.0"
   },
   "bundleDependencies": [
     "js-yaml",

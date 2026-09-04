@@ -1,0 +1,50 @@
+name: Run Docs Tests
+
+on:
+  pull_request:
+
+jobs:
+  docs-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+        node-version:
+          - '20'
+    steps:
+      # Install deps and cache
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Restore cached docs builds
+        id: cache-docs-restore
+        uses: actions/cache/restore@v6
+        with:
+          key: lando-mvb-docs
+          path: docs/.vitepress/cache/@lando/mvb
+
+      - name: Install node ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install NPM dependencies
+        run: npm clean-install --prefer-offline --frozen-lockfile
+
+      # Run tests
+      - name: Run linter
+        run: npm run lint
+      - name: Test mvb
+        run: npm run docs:mvb
+      - name: Test build
+        run: npm run docs:build
+
+      - name: Cache the docs builds
+        id: cache-docs-save
+        if: always() && steps.cache-docs-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.cache-docs-restore.outputs.cache-primary-key }}
+          path: docs/.vitepress/cache/@lando/mvb

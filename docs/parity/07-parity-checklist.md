@@ -19,7 +19,7 @@ One Fixed local OPEN is **proven (local)** for `examples/mariadb-10.4` on #221 @
 | `lando platform` / pull / push / ssh | **defer** (runtime) | Scripts still call `platform`. Host token / pull / push not exercised. |
 | Proxy / routes | **ship** (code) | Same `{default}` parser. Local spike URLs reached 200 after OPEN. |
 | Flex local OPEN | **wontfix** (Phase 3) | Hard abort if `.upsun/config.yaml` exists. Not tested in the local spike. |
-| Leia example jobs | **quarantine** | Still disabled on PRs. One local spike is not a Leia un-quarantine. |
+| Leia example jobs | **quarantine** | Still disabled on PRs. Packaging/CI hygiene does not restore Leia. One local spike is not a Leia un-quarantine. |
 
 ## Explicit non-goals for this phase
 

@@ -11,7 +11,7 @@ module.exports = {
     legacy: ['9.3'],
     port: '5432',
     supportedIgnore: true,
-    healthcheck: 'psql -U postgres -c "\\\l"',
+    healthcheck: 'psql -U postgres -c "\\l"',
   },
   parent: '_platformsh_service',
   builder: (parent, config) => class LandoPlatformshPostgres extends parent {
