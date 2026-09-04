@@ -1,3 +1,7 @@
+## Unreleased
+
+* Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI. Leia stays quarantined.
+
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
 
 * Rebrand package/recipe to `@lando/upsun` / `upsun` (deprecated `platformsh` alias).

@@ -15,9 +15,9 @@ docs:
     title: Upsun (Fixed)
     collapsable: true
     children:
-      "guides/adding-tooling": upsun/adding-tooling
+      "docs/guides/adding-more-tooling": upsun/adding-more-tooling
 
   # This gets added to the lando/lando docs config.js
   config:
     recipes:
-      "upsun": ./docs/usage.md
+      "upsun": ./docs/config.md

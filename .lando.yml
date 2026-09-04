@@ -1,7 +1,8 @@
 name: lando-upsun-plugin
 services:
   node:
-    type: node:18
+    type: lando
+    image: node:20
     build:
       - npm install
     scanner: false

@@ -79,7 +79,7 @@ npm install
 npm test          # lint + unit tests
 ```
 
-Leia / Docker OPEN tests (`npm run test:leia`) stay quarantined. One local `examples/mariadb-10.4` spike is not a Leia matrix.
+Leia / Docker OPEN tests (`npm run test:leia`) stay quarantined. Packaging/CI hygiene does not restore the Leia matrix. One local `examples/mariadb-10.4` spike is not a Leia matrix.
 
 ## Maintainers
 

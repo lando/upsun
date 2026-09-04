@@ -19,10 +19,17 @@ export default defineConfig({
     ['link', {rel: 'icon', href: '/plugins/upsun/favicon.svg', type: 'image/svg+xml'}],
   ],
   themeConfig: {
+    multiVersionBuild: {
+      satisfies: '>=1.0.0',
+    },
     sidebar: sidebar(),
   },
 });
 
+/**
+ * Generates the sidebar configuration for the documentation.
+ * @returns {Array} An array of sidebar items.
+ */
 function sidebar() {
   return [
     {

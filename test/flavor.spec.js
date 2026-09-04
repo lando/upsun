@@ -14,12 +14,12 @@ const fixture = name => path.join(__dirname, 'fixtures', name);
 /**
  * Load app.js. mkdirp is provided by Lando at runtime; stub it for unit tests.
  *
- * @return {Function} The plugin bootstrap.
+ * @returns {Function} The plugin bootstrap.
  */
 const loadAppPlugin = () => {
   try {
     require.resolve('mkdirp');
-  } catch (e) {
+  } catch {
     const originalLoad = Module._load;
     Module._load = function(request, parent, isMain) {
       if (request === 'mkdirp') {
