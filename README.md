@@ -2,7 +2,7 @@
 
 Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
 
-**Phase-0/1 is not runtime OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. OPEN / `PLATFORM_RELATIONSHIPS` at runtime is **deferred** until a live Docker proof exists.
+**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable); pull/push, live token, Flex, and the broader OPEN matrix are still **deferred**.
 
 Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
 
@@ -37,10 +37,10 @@ Review artifacts:
 
 ## What is deferred
 
-* **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — code path kept from the seed SHA; **defer** until `docker pull` + `lando start` on a Fixed PHP+DB example
+* **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — **proven (local)** for `examples/mariadb-10.4` only; broader matrix still **defer**
 * Flex OPEN or Flex relationship rewriting — hard error until Phase 3
-* Leia / Docker example jobs — quarantined on PRs until that spike exists
-* Full Docker OPEN against `docker.registry.platform.sh` is **not verified** here (no Docker daemon). Registry spike: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). That is not an OPEN proof.
+* Leia / Docker example jobs — still quarantined on PRs (one local spike is not a Leia matrix)
+* Broader Docker OPEN against `docker.registry.platform.sh` is still **defer**. Registry HTTP probe: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). Live local OPEN used `php-7.3` + `mariadb-10.4`; see [(6) Image spike](docs/parity/06-image-spike.md).
 
 ## Migration from `@lando/platformsh`
 
@@ -79,7 +79,7 @@ npm install
 npm test          # lint + unit tests
 ```
 
-Leia / Docker OPEN tests (`npm run test:leia`) are quarantined until a live image spike.
+Leia / Docker OPEN tests (`npm run test:leia`) stay quarantined. One local `examples/mariadb-10.4` spike is not a Leia matrix.
 
 ## Maintainers
 

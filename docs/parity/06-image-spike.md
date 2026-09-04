@@ -1,16 +1,32 @@
 # (6) Image spike
 
-Goal: can this environment pull Platform.sh Fixed images from `docker.registry.platform.sh` well enough to run OPEN?
+Goal: can we pull Platform.sh Fixed images from `docker.registry.platform.sh` well enough to run OPEN?
 
-**Result: not proven.** There is no `docker` binary / daemon here. The spike is an anonymous HTTP probe of the registry only. That is **not** an OPEN proof and **not** a `docker pull` proof.
+**Result: proven (local)** for `examples/mariadb-10.4` only. Claw ran a live `lando start` against lando/upsun#221 @ `836c0b001d824477d4c372cbd809caa842b4ab73`. That is one Fixed example, not product-complete OPEN and not a full matrix. Host `PLATFORMSH_CLI_TOKEN` / pull-push were not exercised. Flex was not tested.
 
-## Environment
+## Live local spike (Claw)
 
-* Host: Cursor cloud agent (2026-09-04)
-* `docker` / `dockerd`: not installed
-* Auth: none (no registry token, no `PLATFORMSH_CLI_TOKEN` used for this probe)
+* Repo/PR: [lando/upsun#221](https://github.com/lando/upsun/pull/221) @ `836c0b001d824477d4c372cbd809caa842b4ab73`
+* Example: `examples/mariadb-10.4` (Fixed `.platform*`, recipe `upsun`, `config.id` DISCONNECTED)
+* Anonymous pulls: `docker.registry.platform.sh/php-7.3` + `docker.registry.platform.sh/mariadb-10.4`
+* `lando start` EXIT 0; Opening platform.sh containers; app / mariadb / multi green; URLs 502 then 200
+* `PLATFORM_RELATIONSHIPS` present and usable (PHP `mariadb.php` / `database.php` returned seeded astronaut rows)
+* In-app `platform` CLI 4.24.0
+* Host `PLATFORMSH_CLI_TOKEN` / pull-push **not** exercised
+* Bounds: one example only; Flex not tested; Docker Engine 29.x untested-by-Lando warning present
 
-## Probe
+## What this does and does not mean
+
+This is a local OPEN proof for **one** Fixed PHP+MariaDB example. It is **not**:
+
+* product-complete OPEN parity
+* a Leia / example-matrix pass (Leia stays quarantined)
+* a Flex proof
+* a host-token, pull, or push proof
+
+## Prior cloud-agent HTTP probe (not an OPEN proof)
+
+The Cursor cloud agent (2026-09-04) has no `docker` / `dockerd`. It only probed the registry anonymously. That probe is **not** an OPEN proof and **not** a `docker pull` proof. Kept here as the earlier registry check.
 
 Base: `https://docker.registry.platform.sh`
 
@@ -21,7 +37,7 @@ Base: `https://docker.registry.platform.sh`
 | `GET /v2/mariadb-10.4/manifests/latest` | **200** Docker manifest schema 2 |
 | `HEAD` config + layer blobs for both | **200** |
 
-## `php-8.0`
+### `php-8.0` (HTTP probe only; not the live OPEN example)
 
 * Manifest last-modified: 2021-10-28
 * Config digest: `sha256:4b4443f7f89da5d97174fed5b6768330f546c4eead04bf74e06a284920c49bb3`
@@ -31,7 +47,7 @@ Base: `https://docker.registry.platform.sh`
 * Layer digest: `sha256:f1836c25b90fb38be5461e3f4777b2b428015b84921cb96e02d6f68c53f7f0c6`
 * Layer `Content-Length`: **1961072640** (~1.96 GiB)
 
-## `mariadb-10.4`
+### `mariadb-10.4` (HTTP probe)
 
 * Manifest last-modified: 2021-08-24
 * Config digest: `sha256:e738ec510d9df6d3ebdc8cace6a625da8fa72df32cd85fa98ed07292696b8e49`
@@ -41,16 +57,4 @@ Base: `https://docker.registry.platform.sh`
 * Layer digest: `sha256:f952f7922b37c28b59a093eb99e5b08c009c9e52247793ff323d427690dd825b`
 * Layer `Content-Length`: **533719040** (~509 MiB / ~534 MB)
 
-## What this does and does not mean
-
-Anonymous GET of those two image names succeeds. The images are **2021-era**. Privileged BOOT/OPEN against current Docker/Moby is still unknown.
-
-Claw / workstation next:
-
-```bash
-docker pull docker.registry.platform.sh/php-8.0
-docker pull docker.registry.platform.sh/mariadb-10.4
-# then lando start on examples/php-8.0 or examples/mariadb-10.4
-```
-
-Capture OPEN and `PLATFORM_RELATIONSHIPS` failures. Do not claim image/OPEN parity until that run exists.
+Anonymous GET of those two image names succeeds. The images are **2021-era**. The live OPEN proof above used `php-7.3` + `mariadb-10.4` on `examples/mariadb-10.4`, not `php-8.0`.
