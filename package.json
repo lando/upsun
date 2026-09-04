@@ -63,7 +63,7 @@
     "globals": "^17.12.0",
     "mocha": "^9.1.2",
     "nyc": "^15.1.0",
-    "vitepress": "^1.0.0-rc.42",
+    "vitepress": "^1.5.0",
     "yaml": "^2.6.0"
   },
   "bundleDependencies": [
