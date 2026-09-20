@@ -1,5 +1,8 @@
 #!/bin/bash
-# Fake `platform` CLI for unit tests. Behavior is driven by MOCK_* env vars.
+set -e
+
+. "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
+
 echo "$@" >> "${MOCK_PLATFORM_LOG:-/tmp/mock-platform.log}"
 
 woken_file() {
@@ -54,6 +57,7 @@ case "$1" in
     case "$last" in
       status) echo "${MOCK_STATUS:-}" ;;
       parent) echo "${MOCK_PARENT:-master}" ;;
+      type) echo "${MOCK_ENV_TYPE:-development}" ;;
     esac
     exit 0
     ;;
@@ -75,6 +79,20 @@ case "$1" in
   project:info)
     echo "${MOCK_PROJECT_ID:-proj}"
     exit 0
+    ;;
+  db:dump)
+    output=""
+    previous=""
+    for argument in "$@"; do
+      if [ "$previous" = file ]; then output="$argument"; break; fi
+      [ "$argument" = -f ] && previous=file
+    done
+    printf 'SELECT 1;\n' > "$output"
+    ;;
+  db:sql)
+    cat >/dev/null
+    ;;
+  auth:info|mount:download|mount:upload)
     ;;
   *)
     exit 0

@@ -9,12 +9,12 @@ describe('auth', () => {
     const options = getAuthOptions({email: 'dev@example.com', token: 'abc'}, []);
     options.auth.default.should.equal('abc');
     options.auth.defaultDescription.should.equal('dev@example.com');
+    options.auth.string.should.equal(true);
   });
 
-  it('prompts for a PLATFORMSH_CLI_TOKEN when none are cached', () => {
+  it('prompts for a vendor-neutral Upsun token when none are cached', () => {
     const options = getAuthOptions({}, []);
-    options['api-token'].interactive.message.should.equal(
-      'Enter an Upsun Fixed API token (PLATFORMSH_CLI_TOKEN)'
-    );
+    options.auth.string.should.equal(true);
+    options['api-token'].interactive.message.should.equal('Enter an Upsun API token');
   });
 });

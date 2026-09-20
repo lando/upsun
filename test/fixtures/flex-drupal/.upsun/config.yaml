@@ -1,0 +1,52 @@
+applications:
+  app:
+    type: php:8.4
+    source:
+      root: /
+    relationships:
+      database: "db:mysql"
+      redis:
+    mounts:
+      "/web/sites/default/files":
+        source: storage
+        source_path: files
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: true
+          index: [index.php]
+      commands:
+        pre_start: php setup.php
+      upstream:
+        socket_family: unix
+        protocol: fastcgi
+    hooks:
+      build: composer install
+      deploy: php deploy.php
+    crons:
+      queue:
+        spec: "*/5 * * * *"
+        commands:
+          start: php cron.php
+    variables:
+      env:
+        APP_ENV: local
+      php:
+        memory_limit: 512M
+    dependencies:
+      php:
+        composer/composer: "^2"
+    build:
+      flavor: composer
+services:
+  db:
+    type: mariadb:11.4
+    configuration:
+      schemas: [main]
+  redis:
+    type: redis:7.2
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: app:http

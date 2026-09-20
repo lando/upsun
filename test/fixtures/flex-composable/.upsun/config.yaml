@@ -1,0 +1,12 @@
+applications:
+  app:
+    type: composable:26.05
+    stack:
+      - "nodejs@22"
+      - "php@8.4":
+          extensions: [redis, xsl]
+services: {}
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: app:http
