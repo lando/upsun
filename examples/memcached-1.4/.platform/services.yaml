@@ -1,2 +1,0 @@
-cache:
-  type: memcached:1.4

@@ -1,2 +1,0 @@
-mongo:
-  type: mongodb:3.0

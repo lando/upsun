@@ -1,9 +1,0 @@
-name: vanilla
-type: "php:5.6"
-build:
-  flavor: none
-web:
-  locations:
-    "/":
-      root: "."
-      passthru: "/index.php"
