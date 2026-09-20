@@ -82,12 +82,18 @@ case "$1" in
     ;;
   db:dump)
     output=""
+    gzip_output=0
     previous=""
     for argument in "$@"; do
       if [ "$previous" = file ]; then output="$argument"; break; fi
       [ "$argument" = -f ] && previous=file
+      [ "$argument" = --gzip ] && gzip_output=1
     done
-    printf 'SELECT 1;\n' > "$output"
+    if [ "$gzip_output" = 1 ]; then
+      printf 'SELECT 1;\n' | gzip > "$output"
+    else
+      printf 'SELECT 1;\n' > "$output"
+    fi
     ;;
   db:sql)
     cat >/dev/null

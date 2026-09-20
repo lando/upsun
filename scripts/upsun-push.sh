@@ -12,6 +12,7 @@ PLATFORM_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo main)"
 upsun_parse_sync_args "$@"
 relationships=("${PLATFORM_SYNC_RELATIONSHIPS[@]}")
 mounts=("${PLATFORM_SYNC_MOUNTS[@]}")
+mapfile -t app_args < <(upsun_app_args)
 
 printf -v "$UPSUN_CLI_TOKEN_VAR" '%s' "$PLATFORM_AUTH"
 export "$UPSUN_CLI_TOKEN_VAR"
@@ -22,6 +23,10 @@ if [ -z "${PLATFORM_PROJECT:-}" ]; then
   export PLATFORM_PROJECT
 fi
 upsun_ensure_active_environment
+if [ "${UPSUN_TETHERED:-}" = 1 ]; then
+  lando_yellow "Tethered mode: databases live on Upsun; skipping relationship export"
+  relationships=(none)
+fi
 
 environment_type="$(upsun_platform_raw environment:info -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" type 2>/dev/null || true)"
 if [ "${UPSUN_SYNC_FORCE:-}" != 1 ] && {
@@ -59,7 +64,8 @@ for relationship in "${relationships[@]}"; do
       exit 3
       ;;
   esac
-  upsun_platform_raw db:sql -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" -r "$rel_name" < "$dump_file"
+  upsun_platform_raw db:sql -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" "${app_args[@]}" \
+    -r "$rel_name" < "$dump_file"
 done
 
 for mount in "${mounts[@]}"; do
@@ -69,7 +75,7 @@ for mount in "${mounts[@]}"; do
   [ "$remote_mount" = "$mount" ] && remote_mount="$local_mount"
   source_dir="${PLATFORM_APP_DIR:-/app}/${local_mount#/}"
   lando_pink "Uploading the $local_mount mount"
-  upsun_platform_raw mount:upload -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" \
+  upsun_platform_raw mount:upload -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" "${app_args[@]}" \
     -m "$remote_mount" --source "$source_dir" -y
 done
 

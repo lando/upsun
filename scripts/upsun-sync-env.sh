@@ -3,13 +3,9 @@ set -e
 
 . "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
 #
-# Shared Fixed sync helpers for lando pull / lando push.
+# Shared Upsun Flex and Fixed sync helpers for lando pull / lando push.
 #
-# CLI contract (Upsun Fixed docs):
-#   binary: platform   (NOT upsun)
-#   token:  PLATFORMSH_CLI_TOKEN   (NOT UPSUN_CLI_TOKEN)
-#   resume:   platform environment:resume     (paused)
-#   activate: platform environment:activate   (inactive)
+# The injected binary and token variable select the CLI for the detected project.
 #
 # Prefer waking the current git-branch (or --env) environment. Parent fallback
 # only when wake fails and the user did not opt out (--no-parent or explicit --env).
@@ -44,7 +40,7 @@ upsun_append_csv() {
 
 # Parse pull/push argv. Sets:
 #   PLATFORM_AUTH, PLATFORM_PROJECT, PLATFORM_BRANCH (if --env)
-#   UPSUN_SYNC_NO_PARENT, UPSUN_SYNC_ENV_EXPLICIT
+#   UPSUN_SYNC_NO_PARENT, UPSUN_SYNC_ENV_EXPLICIT, UPSUN_SYNC_ALL_MOUNTS, UPSUN_SYNC_APP
 #   PLATFORM_SYNC_RELATIONSHIPS, PLATFORM_SYNC_MOUNTS
 upsun_parse_sync_args() {
   PLATFORM_SYNC_RELATIONSHIPS=()
@@ -74,6 +70,26 @@ upsun_parse_sync_args() {
         ;;
       -m|--mount)
         upsun_append_csv PLATFORM_SYNC_MOUNTS "$2"
+        shift 2
+        ;;
+      --all-mounts)
+        UPSUN_SYNC_ALL_MOUNTS=1
+        shift
+        ;;
+      --skip-db)
+        PLATFORM_SYNC_RELATIONSHIPS=(none)
+        shift
+        ;;
+      --skip-files)
+        PLATFORM_SYNC_MOUNTS=(none)
+        shift
+        ;;
+      -A=*|--app=*)
+        UPSUN_SYNC_APP="${1#*=}"
+        shift
+        ;;
+      -A|--app)
+        UPSUN_SYNC_APP="$2"
         shift 2
         ;;
       -e=*|--env=*|--environment=*)
@@ -114,6 +130,12 @@ upsun_parse_sync_args() {
         ;;
     esac
   done
+  UPSUN_SYNC_APP="${UPSUN_SYNC_APP:-${PLATFORM_APPLICATION_NAME:-}}"
+}
+
+upsun_app_args() {
+  [ -n "${UPSUN_SYNC_APP:-}" ] && printf -- '-A\n%s\n' "$UPSUN_SYNC_APP"
+  return 0
 }
 
 # Export PLATFORM_PROJECT and point the CLI at it (set-remote + env).

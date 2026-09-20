@@ -29,7 +29,8 @@ function runSync(script, args, extraEnv = {}) {
     fs.chmodSync(path.join(bin, client), 0o755);
   }
   try {
-    execFileSync('bash', [script, ...args], {
+    const stdout = execFileSync('bash', [script, ...args], {
+      encoding: 'utf8',
       env: {
         ...process.env,
         PATH: `${bin}:${process.env.PATH}`,
@@ -58,6 +59,7 @@ function runSync(script, args, extraEnv = {}) {
       },
     });
     return {
+      stdout,
       cli: fs.readFileSync(cliLog, 'utf8'),
       db: fs.existsSync(dbLog) ? fs.readFileSync(dbLog, 'utf8') : '',
     };
@@ -71,10 +73,10 @@ describe('Lando-native sync scripts', () => {
     const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
       '--env', 'dev', '-r', 'database', '-r', 'pg', '-m', 'files',
     ]);
-    logs.cli.should.match(/db:dump -p project -e dev -r database -f \/tmp\/DATABASE\.sql/);
-    logs.cli.should.match(/db:dump -p project -e dev -r pg -f \/tmp\/PG\.sql/);
-    logs.db.should.match(/mysql --host=db --port=3306 --user=user main/);
-    logs.db.should.match(/psql --host=pg --port=5432 --username=user --dbname=main --file=\/tmp\/PG\.sql/);
+    logs.cli.should.match(/db:dump -p project -e dev -r database --gzip -f \/tmp\/DATABASE\.sql\.gz/);
+    logs.cli.should.match(/db:dump -p project -e dev -r pg --gzip -f \/tmp\/PG\.sql\.gz/);
+    logs.db.should.match(/mysql --host=db --port=3306 --user=user main stdin=(?!0\b)\d+/);
+    logs.db.should.match(/psql --host=pg --port=5432 --username=user --dbname=main .*stdin=(?!0\b)\d+/);
     logs.cli.should.match(/mount:download -p project -e dev -m files --target .*\/files -y/);
   });
 
@@ -100,5 +102,58 @@ describe('Lando-native sync scripts', () => {
       '--env', 'production', '--force', '-r', 'none', '-m', 'none',
     ], {MOCK_ACTIVE: 'production', MOCK_ENV_TYPE: 'production'});
     logs.cli.should.match(/environment:info -p project -e production type/);
+  });
+
+  it('pulls a gzip dump and streams it through gunzip into mysql', () => {
+    const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', 'none',
+    ], {PLATFORM_APPLICATION_NAME: 'app'});
+    logs.cli.should.match(/db:dump .*-A app .*-r database --gzip -f \/tmp\/DATABASE\.sql\.gz/);
+    logs.db.should.match(/^mysql .*stdin=(?!0\b)\d+/m);
+  });
+
+  it('imports PostgreSQL dumps with psql -f -', () => {
+    const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', 'none',
+    ], {DATABASE_SCHEME: 'pgsql'});
+    logs.db.should.match(/^psql .*--dbname=main .*-(?:f |file=)-.*stdin=(?!0\b)\d+/m);
+  });
+
+  it('downloads every mount at once with --all-mounts', () => {
+    const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
+      '--env', 'dev', '-r', 'none', '--all-mounts',
+    ]);
+    logs.cli.should.match(/mount:download .*--all --target \S+ -y/);
+    logs.cli.should.not.match(/ -m /);
+  });
+
+  it('passes --app to every remote data command', () => {
+    const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', '/files', '--app', 'api',
+    ]);
+    logs.cli.split('\n').filter(line => /db:dump|mount:download/.test(line))
+      .forEach(line => line.should.match(/-A api/));
+  });
+
+  it('skips databases in tethered mode', () => {
+    const pull = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', 'none',
+    ], {UPSUN_TETHERED: '1'});
+    pull.stdout.should.match(/YELLOW Tethered mode/);
+    pull.cli.should.not.match(/db:dump/);
+
+    const push = runSync(path.join(__dirname, '..', 'scripts', 'upsun-push.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', 'none', '--force',
+    ], {UPSUN_TETHERED: '1', MOCK_ENV_TYPE: 'development'});
+    push.stdout.should.match(/YELLOW Tethered mode/);
+    push.cli.should.not.match(/db:sql/);
+  });
+
+  it('push sends -A on db:sql and mount:upload', () => {
+    const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-push.sh'), [
+      '--env', 'dev', '-r', 'database', '-m', 'files',
+    ], {PLATFORM_APPLICATION_NAME: 'app'});
+    logs.cli.should.match(/db:sql .*-A app/);
+    logs.cli.should.match(/mount:upload .*-A app/);
   });
 });

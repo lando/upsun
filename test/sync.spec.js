@@ -104,6 +104,24 @@ describe('upsun_parse_sync_args', () => {
     runHarness(['parse', '--auth', 'tok-space']).should.match(/AUTH=tok-space/);
     runHarness(['parse', '--auth=tok-eq']).should.match(/AUTH=tok-eq/);
   });
+
+  it('parses --all-mounts, --skip-db, --skip-files and --app', () => {
+    const out = runHarness(['parse', '--all-mounts', '--skip-db', '--skip-files', '--app', 'api']);
+    ['ALL_MOUNTS=1', 'RELS=none', 'MOUNTS=none', 'APP=api'].forEach(value => out.should.include(value));
+    ['-A=web', '--app=web'].forEach(arg => runHarness(['parse', arg]).should.match(/APP=web/));
+  });
+
+  it('defaults the app to PLATFORM_APPLICATION_NAME', () => {
+    runHarness(['parse'], {PLATFORM_APPLICATION_NAME: 'app'}).should.match(/APP=app/);
+  });
+});
+
+describe('sync source contracts', () => {
+  it('uses gzip dumps, app arguments and tether guards', () => {
+    pullSrc.should.match(/(?=[\s\S]*db:dump .*--gzip)(?=[\s\S]*gunzip -c)(?=[\s\S]*UPSUN_TETHERED)/);
+    pushSrc.should.match(/UPSUN_TETHERED/);
+    helperSrc.should.match(/upsun_app_args\(\)/);
+  });
 });
 
 describe('upsun_ensure_active_environment', () => {

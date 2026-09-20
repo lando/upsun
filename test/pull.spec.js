@@ -2,7 +2,8 @@
 
 const chai = require('chai');
 chai.should();
-const {getPullBuildSteps, getPullTask} = require('../lib/pull');
+const pull = require('../lib/pull');
+const {getPullTask} = pull;
 
 const model = {
   flavor: 'flex',
@@ -39,9 +40,24 @@ describe('pull tooling', () => {
     task.options.mount.interactive.choices.should.eql(['/files', '/private']);
   });
 
-  it('exposes database client packages as root build steps', () => {
-    getPullBuildSteps().should.eql([
-      'apt-get update && apt-get install -y mariadb-client postgresql-client jq',
-    ]);
+  it('exposes --all-mounts, --skip-db, --skip-files and --app passthrough options', () => {
+    const options = getPullTask(model, 'app', cli, []).options;
+    options.should.include.keys('auth', 'relationship', 'mount', 'env', 'project', 'no-parent',
+      'all-mounts', 'skip-db', 'skip-files', 'app');
+    options.app.should.include({passthrough: true, string: true});
+    options.app.alias.should.eql(['A']);
+    options['skip-db'].boolean.should.equal(true);
+  });
+
+  it('skips interactive prompts when --skip-db / --skip-files are given', () => {
+    const options = getPullTask(model, 'app', cli, []).options;
+    options.relationship.interactive.when({'skip-db': true}).should.equal(false);
+    options.mount.interactive.when({'skip-files': true}).should.equal(false);
+    options.relationship.interactive.when({}).should.equal(true);
+    options.mount.interactive.when({}).should.equal(true);
+  });
+
+  it('no longer exports build steps', () => {
+    pull.should.not.have.property('getPullBuildSteps');
   });
 });

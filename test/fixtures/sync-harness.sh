@@ -19,6 +19,8 @@ case "$mode" in
     echo "ENV_EXPLICIT=${UPSUN_SYNC_ENV_EXPLICIT:-}"
     echo "RELS=${PLATFORM_SYNC_RELATIONSHIPS[*]}"
     echo "MOUNTS=${PLATFORM_SYNC_MOUNTS[*]}"
+    echo "ALL_MOUNTS=${UPSUN_SYNC_ALL_MOUNTS:-}"
+    echo "APP=${UPSUN_SYNC_APP:-}"
     ;;
   ensure)
     PLATFORM_BRANCH="$1"

@@ -19,4 +19,13 @@ describe('push tooling', () => {
       PLATFORM_RELATIONSHIPS: '',
     });
   });
+
+  it('inherits the new options but not --all-mounts', () => {
+    const task = getPushTask({
+      applications: {app: {relationships: {}, mounts: {}}},
+      services: {},
+    }, 'app', {binary: 'platform', tokenVar: 'PLATFORMSH_CLI_TOKEN', vendor: 'platformsh'}, []);
+    task.options.should.include.keys('skip-db', 'skip-files', 'app', 'force');
+    task.options.should.not.have.property('all-mounts');
+  });
 });
