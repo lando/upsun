@@ -8,20 +8,25 @@ const {execSync} = require('child_process');
 const {load} = require('../lib/config/index');
 const {getRuntimeEnv} = require('../lib/env');
 const {mapApplication, mapService} = require('../lib/mapping/index');
+const {getDatabaseInit} = require('../lib/mapping/database');
+const {getMailpitDefinition} = require('../lib/mapping/services');
 const {getProxyConfig} = require('../lib/routes');
-const {renderVhost} = require('../lib/nginx');
 const {resolveCli, getCliEnv, getInstallStep} = require('../lib/cli');
-const {getPullTask, getPullBuildSteps} = require('../lib/pull');
+const {getPullTask} = require('../lib/pull');
 const {getPushTask} = require('../lib/push');
+const {readLocalProjectId} = require('../lib/project');
+const {getStartCommands} = require('../lib/hooks');
 const tokens = require('../lib/tokens');
 const tooling = require('../lib/tooling');
 const {unique} = require('../lib/warnings');
 
 const DOCS = 'https://docs.lando.dev/upsun/config.html';
+const VERSIONED_PLUGINS = new Set([
+  'php', 'node', 'python', 'ruby', 'go', 'mariadb', 'mysql', 'postgres', 'redis', 'memcached', 'mongo', 'solr',
+  'elasticsearch', 'varnish']);
 
 /**
  * Current git branch of the project, falling back to `main`.
- *
  * @param {string} root Project root.
  * @returns {string} Branch name.
  */
@@ -36,7 +41,6 @@ const getBranch = root => {
 
 /**
  * Pick the model application the Landofile belongs to.
- *
  * @param {object} model Normalized model.
  * @param {string} root Project root.
  * @param {string} landoDir Directory containing the Landofile.
@@ -57,22 +61,6 @@ const getClosestApp = (model, root, landoDir, explicit) => {
         return src === '' || rel === src || rel.startsWith(`${src}/`);
       })
       .maxBy(name => model.applications[name].sourceRoot.length) || names[0];
-};
-
-// Lando service + port that fronts an app (php via nginx uses a sidecar)
-const getProxyTarget = (name, definition) => {
-  const type = String(definition.type).split(':')[0];
-  if (type === 'php') {
-    return _.startsWith(definition.via, 'nginx') ?
-      {service: `${name}_nginx`, port: 80} : {service: name, port: 80};
-  }
-  return {service: name, port: definition.port || 8888};
-};
-
-// Mounts live inside /app (which is a host bind mount) so they only need to exist
-const getMountSteps = (app, sourceRoot) => {
-  const dirs = Object.keys(app.mounts || {}).map(mount => path.posix.join('/app', sourceRoot, mount));
-  return dirs.length ? [`mkdir -p ${dirs.map(dir => `"${dir}"`).join(' ')}`] : [];
 };
 
 // Package names an app's composer project pulls in (root requires + lockfile), for framework tooling
@@ -111,6 +99,29 @@ const loadModel = root => {
   }
 };
 
+/**
+ * Read supported versions from installed Lando service plugins.
+ * @param {Array<{name: string, dir: string}>} plugins Installed plugin metadata.
+ * @returns {object} Supported versions keyed by Lando service type.
+ */
+const getSupportedVersions = (plugins = []) => {
+  const versions = {};
+  for (const plugin of plugins) {
+    const match = /^@lando\/(.+)$/.exec(plugin.name || '');
+    const type = match?.[1];
+    if (!VERSIONED_PLUGINS.has(type)) continue;
+    try {
+      const builder = require(path.join(plugin.dir, 'builders', `${type}.js`));
+      if (Array.isArray(builder?.config?.supported)) {
+        versions[type] = [...new Set([...builder.config.supported, ...(builder.config.legacy || [])])];
+      }
+    } catch (error) {
+      void error;
+    }
+  }
+  return versions;
+};
+
 /*
  * The upsun recipe: translate Upsun configuration into Lando services, proxy and tooling.
  */
@@ -118,13 +129,8 @@ module.exports = {
   name: 'upsun',
   parent: '_recipe',
   config: {
-    proxy: {},
-    services: {},
-    tooling: {},
-    xdebug: false,
-    build: [],
-    run: [],
-    overrides: {},
+    proxy: {}, services: {}, tooling: {}, overrides: {},
+    xdebug: false, build: [], run: [], mail: true, crons: false, tethered: false,
   },
   builder: (parent, config) => class LandoUpsun extends parent {
     constructor(id, options = {}) {
@@ -141,52 +147,86 @@ module.exports = {
       const cli = resolveCli(flavor);
       const closestApp = getClosestApp(model, root, landoDir, landoConfig.app);
       const branch = _.get(app, 'upsun.branch') || getBranch(root);
-      const projectId = landoConfig.id || 'lando';
+      const projectId = landoConfig.id || readLocalProjectId(root, flavor) || 'lando';
       const domain = _.get(app, '_config.domain', 'lndo.site');
+      const name = app.name;
+      const tethered = landoConfig.tethered === true || typeof landoConfig.tethered === 'string';
+      const tetherEnvironment = typeof landoConfig.tethered === 'string' ? landoConfig.tethered : branch;
+      const mail = landoConfig.mail !== false && !model.services.mailpit;
+      const crons = landoConfig.crons === true;
+      const versions = getSupportedVersions(_.get(app, '_lando.config.plugins', []));
       const warnings = [...model.warnings];
       const hostMap = {};
       const services = {};
+      const databases = [];
 
       // Services first so hostMap is complete before env generation
-      for (const service of Object.values(model.services)) {
-        const mapped = mapService(service, model);
-        Object.assign(services, mapped.services);
-        Object.assign(hostMap, mapped.hostMap);
-        warnings.push(...mapped.warnings);
-      }
-
-      // Apps + workers
-      const targets = {};
-      const cachedTokens = tokens.readTokens(app._lando, cli.vendor);
-      const token = cachedTokens.length ? cachedTokens[0].token : undefined;
-      const cliEnv = getCliEnv(flavor, {token, projectId, environment: branch});
-      for (const [appName, modelApp] of Object.entries(model.applications)) {
-        const mapped = mapApplication(modelApp, model, {xdebug: options.xdebug});
-        warnings.push(...mapped.warnings);
-        const env = getRuntimeEnv(model, appName, {domain, projectId, branch, hostMap});
-        for (const [name, definition] of Object.entries(mapped.services)) {
-          const def = _.omit(definition, ['volumes', 'upsun', 'environment', 'build', 'run']);
-          if (def.webroot !== undefined) {
-            def.webroot = path.posix.join(modelApp.sourceRoot, def.webroot) || '.';
-            // web.locations -> nginx vhost (Lando's default vhost has no front-controller passthru)
-            def.config = _.merge({vhosts: renderVhost(modelApp, def.webroot)}, def.config);
-          }
-          def.overrides = _.merge({}, def.overrides, {environment: env});
-          def.build_as_root_internal = [...getPullBuildSteps(), getInstallStep(flavor)];
-          def.build_internal = [...(definition.build || [])];
-          def.run_internal = [...getMountSteps(modelApp, modelApp.sourceRoot), ...(definition.run || [])];
-          if (name === closestApp) {
-            def.build_internal.push(...options.build);
-            def.run_internal.push(...options.run);
-          }
-          services[name] = def;
-          if (name === appName) targets[appName] = getProxyTarget(name, definition);
+      if (!tethered) {
+        for (const service of Object.values(model.services)) {
+          const mapped = mapService(service, model, {versions});
+          Object.assign(services, mapped.services);
+          Object.assign(hostMap, mapped.hostMap);
+          warnings.push(...mapped.warnings);
+          const init = getDatabaseInit(service);
+          if (init) databases.push({service: service.name, host: service.name, ...init});
         }
       }
 
-      // Proxy
-      const proxied = getProxyConfig(model, domain, targets);
+      const targets = {};
+      const startCommands = {};
+      const mailFrom = [];
+      const cachedTokens = tokens.readTokens(app._lando, cli.vendor);
+      const token = cachedTokens.length ? cachedTokens[0].token : undefined;
+      const cliEnv = getCliEnv(flavor, {token, projectId, environment: branch});
+      const appEntries = Object.entries(model.applications);
+      const orderedApps = [appEntries.find(([appName]) => appName === closestApp),
+        ...appEntries.filter(([appName]) => appName !== closestApp)];
+      for (const [appName, modelApp] of orderedApps) {
+        const mapped = mapApplication(modelApp, model, {xdebug: options.xdebug, mail, crons, versions});
+        warnings.push(...mapped.warnings);
+        const env = getRuntimeEnv(model, appName, {
+          domain, name, projectId, branch, hostMap, tethered, tetherEnvironment, smtpHost: mail ? 'mailpit' : '',
+        });
+        for (const [serviceName, definition] of Object.entries(mapped.services)) {
+          const role = definition.upsun.role;
+          const def = _.omit(definition, ['upsun', 'build', 'build_as_root']);
+          if (role === 'nginx') {
+            services[serviceName] = def;
+            continue;
+          }
+          def.overrides = _.merge({}, def.overrides, {
+            environment: {...env, ...(definition.overrides?.environment || {})},
+          });
+          const install = role === 'app' || role === 'worker' ? [getInstallStep(flavor)] : [];
+          def.build_as_root_internal = [...definition.build_as_root, ...install];
+          def.build_internal = [...definition.build];
+          if (serviceName === closestApp) {
+            def.build_internal.push(...options.build);
+            if (options.run.length) def.run_internal = [...options.run];
+          }
+          if (role === 'app') targets[appName] = definition.upsun.proxy;
+          const commands = getStartCommands(model, appName, {
+            role,
+            worker: definition.upsun.worker,
+            databases: serviceName === closestApp ? databases : [],
+            tethered,
+          });
+          if (commands.length) startCommands[serviceName] = commands;
+          mailFrom.push(serviceName);
+          services[serviceName] = def;
+        }
+      }
+
+      let mailProxy = {};
+      if (mail) {
+        const mailpit = getMailpitDefinition({mailFrom, host: `${name}.${domain}`});
+        services.mailpit = mailpit.services.mailpit;
+        mailProxy = mailpit.proxy;
+      }
+
+      const proxied = getProxyConfig(model, {domain, name}, targets);
       warnings.push(...proxied.warnings);
+      const proxy = _.merge({}, proxied.proxy, mailProxy);
 
       // Tooling for the closest app
       const closest = model.applications[closestApp];
@@ -199,6 +239,9 @@ module.exports = {
         ...tooling.getComposerTooling(closestApp, dir, getComposerPackages(path.join(root, closest.sourceRoot)), {dir}),
         ...tooling.getRelationshipTooling(closest, services, hostMap),
         ...tooling.getCronTooling(closestApp, closest),
+        ...tooling.getOperationTooling(closestApp, closest),
+        ...(closestType === 'php' ? tooling.getXdebugTooling(closestApp) : {}),
+        ...(tethered ? tooling.getTetherTooling(closestApp, cliEnv) : {}),
         [cli.binary]: {
           service: closestApp,
           description: `Runs the ${cli.binary} CLI against your Upsun project`,
@@ -213,11 +256,14 @@ module.exports = {
       // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service
       const ordered = {[closestApp]: services[closestApp], ...services};
       options.services = _.merge({}, ordered, options.overrides, options.services);
-      options.proxy = _.merge({}, proxied.proxy, options.proxy);
+      options.proxy = _.merge({}, proxy, options.proxy);
       options.tooling = _.merge({}, appTooling, options.tooling);
 
       // Share with app.js / index.js
-      app.upsun = {model, flavor, cli, closestApp, hostMap, branch, warnings: unique(warnings)};
+      app.upsun = {
+        model, flavor, cli, closestApp, closestType, hostMap, branch, projectId, tethered, tetherEnvironment, mail,
+        startCommands, warnings: unique(warnings),
+      };
 
       super(id, options);
     }
