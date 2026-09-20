@@ -5,19 +5,44 @@ const appHook = require('../app');
 
 const makeApp = recipe => {
   const events = {};
+  const priorities = {};
   const warnings = [];
+  const messages = [];
+  const runs = [];
   return {
     app: {
       id: 'orig', name: 'test',
       config: {recipe, config: {id: 'proj'}},
-      log: {verbose: () => {}, alsoSanitize: () => {}},
+      containers: {'drupal': 'c-drupal', 'drupal--queue': 'c-queue'},
+      compose: ['a.yml'],
+      project: 'proj',
+      info: [{service: 'drupal', meUser: 'www-data'}, {service: 'drupal--queue', meUser: 'node'}],
+      log: {verbose: () => {}, info: () => {}, alsoSanitize: () => {}},
       addWarning: warning => warnings.push(warning),
+      addMessage: (message, error) => messages.push({...message, error}),
+      engine: {run: steps => {
+        runs.push(steps);
+        return Promise.resolve();
+      }},
       events: {on: (name, ...rest) => {
+        if (typeof rest[0] === 'number') priorities[name] = rest[0];
         events[name] = rest[rest.length - 1];
       }},
-      upsun: {warnings: [{code: 'version-fallback', message: 'x'}], cli: {vendor: 'upsun'}, closestApp: 'drupal'},
+      upsun: {
+        warnings: [{code: 'version-fallback', message: 'x'}],
+        cli: {vendor: 'upsun'},
+        closestApp: 'drupal',
+        startCommands: {
+          'drupal': [
+            {name: 'mounts', cmd: 'mkdir -p "/app/x"', user: 'app'},
+            {name: 'tether', cmd: '/helpers/upsun-tether.sh open', user: 'root'},
+          ],
+          'drupal--queue': [{name: 'mounts', cmd: 'mkdir -p "/app/q"', user: 'app'}],
+          'ghost': [{name: 'mounts', cmd: 'x', user: 'app'}],
+        },
+      },
     },
-    events, warnings,
+    events, messages, priorities, runs, warnings,
   };
 };
 
@@ -39,6 +64,64 @@ describe('app.js', () => {
     expect(warnings[0].title).to.equal('Service version substituted');
     expect(warnings[0].url).to.include('#version-fallback');
     expect(events).to.include.all.keys('post-pull', 'post-push');
+  });
+
+  it('builds engine.run commands for every start command', () => {
+    const {app} = makeApp('upsun');
+    const commands = appHook.buildRunCommands(app);
+    expect(commands).to.have.length(3);
+    expect(commands[0]).to.deep.equal({
+      id: 'c-drupal',
+      cmd: ['/helpers/exec-multiliner.sh', Buffer.from('mkdir -p "/app/x"').toString('base64')],
+      compose: ['a.yml'],
+      project: 'proj',
+      api: 3,
+      opts: {
+        mode: 'attach',
+        user: 'www-data',
+        services: ['drupal'],
+        cstdio: 'inherit',
+        environment: {},
+        upsunStep: 'drupal:mounts',
+      },
+    });
+    expect(commands[1].opts.user).to.equal('root');
+    expect(commands[2].opts.user).to.equal('node');
+  });
+
+  it('runs the start commands on post-start after build steps', async () => {
+    const {app, events, priorities, runs} = makeApp('upsun');
+    appHook(app, {});
+    expect(priorities['post-start']).to.equal(101);
+    await events['post-start']();
+    expect(runs).to.have.length(1);
+    expect(runs[0]).to.have.length(3);
+  });
+
+  it('does nothing without start commands', () => {
+    const {app, events, runs} = makeApp('upsun');
+    app.upsun.startCommands = {};
+    appHook(app, {});
+    expect(events['post-start']()).to.equal(undefined);
+    expect(runs).to.have.length(0);
+  });
+
+  it('reports failures through addMessage instead of throwing', async () => {
+    const {app, events, messages} = makeApp('upsun');
+    app.engine.run = () => Promise.reject(new Error('failed'));
+    appHook(app, {});
+    await events['post-start']();
+    expect(messages[0].title).to.equal('One of your Upsun start commands failed');
+    expect(messages[0].command).to.equal('lando restart');
+  });
+
+  it('adds the tether environment to lando info', () => {
+    const {app, events} = makeApp('upsun');
+    app.upsun.tethered = true;
+    app.upsun.tetherEnvironment = 'staging';
+    appHook(app, {});
+    events['post-info']();
+    expect(app.info[0].tethered).to.equal('staging');
   });
 
   it('warns about the deprecated platformsh recipe alias', () => {
