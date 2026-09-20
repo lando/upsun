@@ -3,6 +3,7 @@
 const chai = require('chai');
 chai.should();
 const {mapService} = require('../lib/mapping');
+const {getMailpitDefinition} = require('../lib/mapping/services');
 
 const makeService = (name, type, version, configuration = {}, raw = {}) => ({
   name,
@@ -37,12 +38,7 @@ describe('bundled service mapping', () => {
       mapped.warnings.should.eql([]);
       if (['mariadb', 'mysql', 'oracle-mysql', 'postgresql', 'mongodb', 'mongodb-enterprise'].includes(upsunType)) {
         mapped.services.service.creds.should.have.keys('user', 'password', 'database');
-        if (upsunType === 'postgresql') {
-          // Lando's postgres plugin only supports the passwordless postgres superuser
-          mapped.hostMap.service.should.include({username: 'postgres', password: '', path: 'main'});
-        } else {
-          mapped.hostMap.service.should.include({username: 'upsun', password: 'upsun', path: 'main'});
-        }
+        mapped.hostMap.service.should.include({username: 'upsun', password: 'upsun', path: 'main'});
       }
     });
   }
@@ -92,8 +88,14 @@ describe('bundled service mapping', () => {
       endpoints: {reporter: {default_database: 'analytics', privileges: {analytics: 'ro'}}},
     });
     const mapped = mapService(service, emptyModel);
-    mapped.hostMap.db.should.include({username: 'postgres', path: 'analytics'});
+    mapped.hostMap.db.should.include({username: 'reporter', password: 'upsun', path: 'analytics'});
     mapped.hostMap['db#reporter'].should.eql(mapped.hostMap.db);
+  });
+
+  it('honours supplied supported service versions', () => {
+    const mapped = mapService(makeService('db', 'postgresql', '16'), emptyModel, {versions: {postgres: ['15']}});
+    mapped.services.db.type.should.equal('postgres:15');
+    mapped.warnings[0].code.should.equal('version-unsupported');
   });
 
   it('uses configured SQL schemas when no custom endpoint exists', () => {
@@ -142,6 +144,9 @@ describe('compose service mapping', () => {
     ['chrome-headless', '132', 'chromedp/headless-shell:132', 'http', 9222, ['9222']],
     ['gotenberg', '8', 'gotenberg/gotenberg:8', 'http', 3000, ['3000']],
     ['clickhouse', '25', 'clickhouse/clickhouse-server:25', 'http', 8123, ['8123', '9000']],
+    ['mercure', '0.16', 'dunglas/mercure:latest', 'http', 80, ['80']],
+    ['chroma', '0.6', 'chromadb/chroma:0.6', 'http', 8000, ['8000']],
+    ['qdrant', '1.12', 'qdrant/qdrant:v1.12', 'http', 6333, ['6333', '6334']],
   ];
 
   for (const [type, version, image, scheme, port, ports] of cases) {
@@ -166,6 +171,17 @@ describe('compose service mapping', () => {
     });
   });
 
+  it('sets Mercure JWT keys and latest tags for empty versions', () => {
+    const mapped = mapService(makeService('hub', 'mercure', ''), emptyModel).services.hub.services;
+    mapped.image.should.equal('dunglas/mercure:latest');
+    mapped.environment.should.eql({
+      MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!',
+      MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!',
+    });
+    mapService(makeService('vectors', 'qdrant', '0'), emptyModel)
+        .services.vectors.services.image.should.equal('qdrant/qdrant:latest');
+  });
+
   it('sets RabbitMQ relationship credentials', () => {
     mapService(makeService('queue', 'rabbitmq', '4.1'), emptyModel).hostMap.queue.should.eql({
       host: 'queue', port: 5672, scheme: 'amqp', username: 'guest', password: 'guest',
@@ -181,9 +197,23 @@ describe('compose service mapping', () => {
     chrome.command.should.include('--remote-debugging-port=9222');
   });
 
-  it('declares network storage as a top-level named volume', () => {
+  it('no longer returns volumes for network storage', () => {
     mapService(makeService('files', 'network-storage', '1'), emptyModel).should.eql({
-      services: {}, volumes: {files: {}}, hostMap: {}, warnings: [],
+      services: {}, hostMap: {}, warnings: [],
+    });
+  });
+
+  it('builds the mailpit definition and mail URL', () => {
+    getMailpitDefinition({mailFrom: ['app', 'app--worker'], host: 'example.lndo.site'}).should.eql({
+      services: {
+        mailpit: {
+          type: 'mailpit',
+          mailFrom: ['app', 'app--worker'],
+          port: 25,
+          overrides: {environment: {MP_SMTP_BIND_ADDR: '0.0.0.0:25'}},
+        },
+      },
+      proxy: {mailpit: [{hostname: 'mail.example.lndo.site', port: '80', pathname: '/'}]},
     });
   });
 

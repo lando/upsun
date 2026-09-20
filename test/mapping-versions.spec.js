@@ -1,5 +1,9 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const {spawnSync} = require('child_process');
 const chai = require('chai');
 chai.should();
 const {resolveVersion, VERSION_TABLES} = require('../lib/mapping/versions');
@@ -39,5 +43,30 @@ describe('mapping versions', () => {
 
   it('rejects unknown Lando plugin types', () => {
     (() => resolveVersion('java', '21')).should.throw('Unknown Lando service type: java');
+  });
+
+  it('prefers a supplied supported list', () => {
+    resolveVersion('php', '8.4', ['8.3', '8.2']).should.include({version: '8.3'});
+    resolveVersion('php', '8.4', ['8.3', '8.2']).warning.code.should.equal('version-fallback');
+    resolveVersion('php', '8.4', ['8.4']).should.eql({version: '8.4'});
+    resolveVersion('java', '21', ['21']).should.eql({version: '21'});
+  });
+
+  it('regenerates from LANDO_PLUGINS_DIR', () => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-versions-'));
+    const plugin = path.join(temporary, 'php', 'builders');
+    const output = path.join(temporary, 'versions.js');
+    fs.mkdirSync(plugin, {recursive: true});
+    fs.writeFileSync(path.join(plugin, 'php.js'), `module.exports = {config: {supported: ['9.9']}};\n`);
+
+    const result = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'update-versions.js')], {
+      encoding: 'utf8',
+      env: {...process.env, LANDO_PLUGINS_DIR: temporary, UPSUN_VERSIONS_OUTPUT: output},
+    });
+    result.status.should.equal(0, result.stderr);
+    const generated = fs.readFileSync(output, 'utf8');
+    generated.should.include(`'9.9'`);
+    generated.should.include('resolveVersion = (landoType, wanted, supported)');
+    fs.rmSync(temporary, {recursive: true, force: true});
   });
 });

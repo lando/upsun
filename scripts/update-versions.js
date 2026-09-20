@@ -1,9 +1,11 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+const PLUGINS_DIR = process.env.LANDO_PLUGINS_DIR || path.join(os.homedir(), '.lando', 'plugins', '@lando');
 const SOURCES = [
   ['php', 'php', 'php.js'],
   ['node', 'node', 'node.js'],
@@ -129,10 +131,11 @@ const compareParts = (left, right) => {
  *
  * @param {string} landoType Lando service type.
  * @param {string|number} wanted Requested Upsun version.
+ * @param {string[]} [supported] Caller-supplied supported versions.
  * @returns {{version: string, warning?: object}}
  */
-const resolveVersion = (landoType, wanted) => {
-  const versions = VERSION_TABLES[landoType];
+const resolveVersion = (landoType, wanted, supported) => {
+  const versions = supported ?? VERSION_TABLES[landoType];
   if (!versions) {
     throw new Error(\`Unknown Lando service type: \${landoType}\`);
   }
@@ -182,18 +185,19 @@ exports.resolveVersion = resolveVersion;
 `;
 };
 
-const tables = SOURCES.map(([type, plugin, file]) => {
-  const relative = `../${plugin}/builders/${file}`;
-  const sourcePath = path.resolve(ROOT, relative);
+const tables = SOURCES.flatMap(([type, plugin, file]) => {
+  const relative = `${plugin}/builders/${file}`;
+  const sourcePath = path.join(PLUGINS_DIR, relative);
+  if (!fs.existsSync(sourcePath)) return [];
   const source = fs.readFileSync(sourcePath, 'utf8');
   const versions = [...new Set([...extractArray(source, 'supported'), ...extractArray(source, 'legacy')])];
   if (versions.length === 0) {
     throw new Error(`No versions found in ${sourcePath}`);
   }
-  return {type, relative, versions};
+  return [{type, relative, versions}];
 });
 
 const date = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Chicago'}).format(new Date());
-const output = path.join(ROOT, 'lib', 'mapping', 'versions.js');
+const output = process.env.UPSUN_VERSIONS_OUTPUT || path.join(ROOT, 'lib', 'mapping', 'versions.js');
 fs.mkdirSync(path.dirname(output), {recursive: true});
 fs.writeFileSync(output, render(tables, date));
