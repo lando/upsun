@@ -3,14 +3,11 @@
 const _ = require('lodash');
 const PlatformshApiClient = require('platformsh-client').default;
 const cli = require('../lib/cli');
+const {readLocalProjectId} = require('../lib/project');
 const tokens = require('../lib/tokens');
 const utils = require('../lib/utils');
 
 let cachedProjects = [];
-const API_CONFIG = {
-  api_url: 'https://api.upsun.com',
-  authentication_url: 'https://auth.upsun.com',
-};
 
 /**
  * Accept both --upsun-* and deprecated --platformsh-* flags.
@@ -28,6 +25,7 @@ const normalizeInitOptions = answers => {
 
 // Flavor implied by the init source the user picked
 const getFlavor = answers => answers.source === 'platformsh' ? 'fixed' : 'flex';
+const isRemoteSource = answers => ['upsun', 'platformsh'].includes(answers.source);
 
 // Token choices for the interactive list
 const getTokenChoices = cached => _(cached)
@@ -35,8 +33,9 @@ const getTokenChoices = cached => _(cached)
     .thru(list => list.concat([{name: 'add or refresh a token', value: 'more'}]))
     .value();
 
-const showTokenList = (answers, cached) => utils.isUpsunRecipe(answers.recipe) && !_.isEmpty(cached);
-const showTokenEntry = (answers, cached) => utils.isUpsunRecipe(answers.recipe) &&
+const showTokenList = (answers, cached) => isRemoteSource(answers) &&
+  utils.isUpsunRecipe(answers.recipe) && !_.isEmpty(cached);
+const showTokenEntry = (answers, cached) => isRemoteSource(answers) && utils.isUpsunRecipe(answers.recipe) &&
   (_.isEmpty(cached) || answers['upsun-auth'] === 'more');
 
 // Project autocomplete via the API
@@ -45,7 +44,7 @@ const getProjects = (answers, lando, input = null) => {
   if (!_.isEmpty(cachedProjects)) {
     return lando.Promise.resolve(cachedProjects).filter(project => _.startsWith(project.name, input));
   }
-  const api = new PlatformshApiClient({...API_CONFIG, api_token: _.trim(answers['upsun-auth'])});
+  const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(answers['upsun-auth'])});
   return api.getAccountInfo()
       .then(me => {
         cachedProjects = _.map(me.projects, project => ({name: project.title, value: project.name}));
@@ -86,7 +85,7 @@ module.exports = {
         message: 'Which project?',
         source: (answers, input) => getProjects(answers, lando, input)
             .then(projects => _.orderBy(projects, ['name'], ['asc'])),
-        when: answers => utils.isUpsunRecipe(answers.recipe),
+        when: answers => isRemoteSource(answers) && utils.isUpsunRecipe(answers.recipe),
         weight: 530,
       },
     },
@@ -97,8 +96,11 @@ module.exports = {
     name: {
       when: answers => {
         normalizeInitOptions(answers);
-        answers.name = answers['upsun-site'];
-        return false;
+        if (isRemoteSource(answers)) {
+          answers.name = answers['upsun-site'];
+          return false;
+        }
+        return _.isEmpty(answers.name);
       },
     },
     webroot: {when: () => false},
@@ -117,7 +119,7 @@ module.exports = {
       return [{
         name: 'get-project-id',
         func: (opts, lando) => {
-          const api = new PlatformshApiClient({...API_CONFIG, api_token: _.trim(opts['upsun-auth'])});
+          const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(opts['upsun-auth'])});
           return api.getAccountInfo().then(me => {
             const project = _.find(me.projects, {name: opts['upsun-site']});
             if (_.isEmpty(project)) throw Error(`${opts['upsun-site']} does not appear to be an Upsun project!`);
@@ -144,8 +146,12 @@ module.exports = {
   }],
   build: (options, lando) => {
     normalizeInitOptions(options);
+    if (!isRemoteSource(options)) {
+      const id = readLocalProjectId(options.destination || process.cwd());
+      return id ? {config: {id}} : {};
+    }
     const vendor = cli.resolveCli(getFlavor(options)).vendor;
-    const api = new PlatformshApiClient({...API_CONFIG, api_token: _.trim(options['upsun-auth'])});
+    const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(options['upsun-auth'])});
     return api.getAccountInfo().then(me => {
       const project = _.find(me.projects, {name: options['upsun-site']});
       if (_.isEmpty(project)) throw Error(`${options['upsun-site']} does not appear to be an Upsun project!`);

@@ -2,9 +2,17 @@
 
 const chai = require('chai');
 chai.should();
-const {getCliEnv, getInstallStep, resolveCli} = require('../lib/cli');
+const {API_CONFIG, getCliEnv, getInstallStep, resolveCli} = require('../lib/cli');
 
 describe('cli', () => {
+  it('exports the Upsun API endpoints', () => {
+    API_CONFIG.should.eql({
+      api_url: 'https://api.upsun.com',
+      authentication_url: 'https://auth.upsun.com',
+    });
+    Object.isFrozen(API_CONFIG).should.equal(true);
+  });
+
   it('resolves the Flex CLI independently of available tokens', () => {
     resolveCli('flex', {
       env: {UPSUN_CLI_TOKEN: 'flex', PLATFORMSH_CLI_TOKEN: 'fixed'},
@@ -35,6 +43,8 @@ describe('cli', () => {
       PLATFORM_PROJECT: 'project',
       PLATFORM_ENVIRONMENT: 'dev',
       UPSUN_CLI_NO_INTERACTION: '1',
+      UPSUN_CLI_UPDATES_CHECK: '0',
+      UPSUN_CLI_CONTEXT: '1',
       PLATFORM_RELATIONSHIPS: '',
       PLATFORM_APPLICATION: '',
     });
@@ -44,6 +54,8 @@ describe('cli', () => {
     getCliEnv('fixed', {token: 'secret'}).should.eql({
       PLATFORMSH_CLI_TOKEN: 'secret',
       PLATFORMSH_CLI_NO_INTERACTION: '1',
+      PLATFORMSH_CLI_UPDATES_CHECK: '0',
+      UPSUN_CLI_CONTEXT: '1',
       PLATFORM_RELATIONSHIPS: '',
       PLATFORM_APPLICATION: '',
     });

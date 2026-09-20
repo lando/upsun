@@ -1,9 +1,11 @@
 'use strict';
 
+const path = require('path');
 const {expect} = require('chai');
 const init = require('../inits/upsun');
 
 const lando = {config: {home: '/tmp'}, cache: {get: () => []}};
+const fixture = name => path.join(__dirname, 'fixtures', name);
 
 describe('inits/upsun', () => {
   it('registers upsun and platformsh sources that both resolve to the upsun recipe', () => {
@@ -21,7 +23,7 @@ describe('inits/upsun', () => {
     expect(options).to.have.all.keys(
       'upsun-auth', 'upsun-auth-token', 'upsun-site', 'platformsh-auth', 'platformsh-site',
     );
-    const answers = {'platformsh-site': 'foo', 'platformsh-auth': 'tok'};
+    const answers = {'source': 'platformsh', 'platformsh-site': 'foo', 'platformsh-auth': 'tok'};
     init.overrides.name.when(answers);
     expect(answers.name).to.equal('foo');
     expect(answers['upsun-auth']).to.equal('tok');
@@ -40,8 +42,35 @@ describe('inits/upsun', () => {
     expect(cloneFlex.env({'upsun-auth': ' tok '})).to.include({
       UPSUN_CLI_TOKEN: 'tok',
       UPSUN_CLI_NO_INTERACTION: '1',
+      UPSUN_CLI_UPDATES_CHECK: '0',
+      UPSUN_CLI_CONTEXT: '1',
       PLATFORM_APPLICATION: '',
       PLATFORM_RELATIONSHIPS: '',
     });
+  });
+
+  it('derives config.id from the local project file for --source cwd', async () => {
+    expect(await init.build({source: 'cwd', destination: fixture('flex-local-project')}, lando))
+        .to.deep.equal({config: {id: 'abcdefg123456'}});
+    expect(await init.build({source: 'cwd', destination: fixture('flex-drupal')}, lando)).to.deep.equal({});
+  });
+
+  it('only prompts for tokens and projects with a remote source', () => {
+    const options = init.options(lando);
+    const tokenOptions = init.options({cache: {get: () => [{email: 'dev@example.com', token: 'secret'}]}});
+    expect(options['upsun-site'].interactive.when({recipe: 'upsun', source: 'cwd'})).to.equal(false);
+    expect(options['upsun-site'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
+    expect(tokenOptions['upsun-auth'].interactive.when({recipe: 'upsun', source: 'cwd'})).to.equal(false);
+    expect(tokenOptions['upsun-auth'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
+    expect(options['upsun-auth-token'].interactive.when({recipe: 'upsun', source: 'cwd'})).to.equal(false);
+    expect(options['upsun-auth-token'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
+  });
+
+  it('keeps the default name prompt for local sources', () => {
+    expect(init.overrides.name.when({source: 'cwd'})).to.equal(true);
+    expect(init.overrides.name.when({source: 'cwd', name: 'x'})).to.equal(false);
+    const remote = {'source': 'upsun', 'upsun-site': 'foo'};
+    expect(init.overrides.name.when(remote)).to.equal(false);
+    expect(remote.name).to.equal('foo');
   });
 });
