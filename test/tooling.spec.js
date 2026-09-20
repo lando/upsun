@@ -36,6 +36,13 @@ describe('lib/tooling', () => {
     expect(result).to.not.have.property('search');
   });
 
+  it('adds a valkey shell for compose services', () => {
+    const app = {relationships: {cache: {service: 'cache', endpoint: 'valkey'}}};
+    const services = {cache: {type: 'compose', services: {image: 'valkey/valkey:8'}}};
+    const result = tooling.getRelationshipTooling(app, services, {cache: {}});
+    expect(result.cache.cmd).to.equal('valkey-cli');
+  });
+
   it('adds drush when composer.json requires it', () => {
     expect(tooling.getComposerTooling('app', '/app', null)).to.deep.equal({});
     expect(tooling.getComposerTooling('app', '/app', ['drupal/core'])).to.deep.equal({});
@@ -50,5 +57,46 @@ describe('lib/tooling', () => {
     const result = tooling.getCronTooling('app', {crons: {queue: {}, sweep: {}}});
     expect(result['cron <name>']).to.include({service: 'app', cmd: '/helpers/upsun-cron.sh'});
     expect(result['cron <name>'].description).to.include('queue, sweep');
+  });
+
+  it('exposes lando operation <name> only when operations exist', () => {
+    expect(tooling.getOperationTooling('app', {})).to.deep.equal({});
+    expect(tooling.getOperationTooling('app', {operations: {a: {}, b: {}}})).to.deep.equal({
+      'operation <name>': {
+        service: 'app',
+        description: 'Runs an Upsun runtime operation once (a, b)',
+        cmd: '/helpers/upsun-operation.sh',
+      },
+    });
+  });
+
+  it('exposes root xdebug toggles', () => {
+    expect(tooling.getXdebugTooling('app')).to.deep.equal({
+      'xdebug-on': {
+        service: 'app',
+        description: 'Enables Xdebug (optional mode, default debug)',
+        cmd: '/helpers/upsun-xdebug.sh on',
+        user: 'root',
+      },
+      'xdebug-off': {
+        service: 'app',
+        description: 'Disables Xdebug',
+        cmd: '/helpers/upsun-xdebug.sh off',
+        user: 'root',
+      },
+    });
+  });
+
+  it('exposes lando tether as root with the CLI env', () => {
+    const env = {UPSUN_CLI_TOKEN: 'token', UPSUN_CLI_CONTEXT: '1'};
+    expect(tooling.getTetherTooling('app', env)).to.deep.equal({
+      tether: {
+        service: 'app',
+        description: 'Opens (or refreshes) tunnels to the tethered Upsun environment; --close / --info',
+        cmd: '/helpers/upsun-tether.sh',
+        user: 'root',
+        env,
+      },
+    });
   });
 });
