@@ -23,7 +23,9 @@ const fixture = (flavor = 'flex') => {
     applications: {app: {
       name: 'app', sourceRoot: 'backend', type: {runtime: 'php', version: '8.4'},
       relationships: {database: {service: 'db', endpoint: 'mysql'}},
-      variables: raw.variables, web: {document_root: 'web', upstream: {socket_family: 'tcp'}}, raw,
+      variables: raw.variables, timezone: raw.timezone,
+      web: {commands: {pre_start: null, start: null, post_start: null}, document_root: 'web',
+        upstream: {socket_family: 'tcp'}}, raw,
     }},
     services: {db: {name: 'db', type: {service: 'mariadb', version: '11.4'}, configuration: {}, raw: {}}},
     routes: {'https://{default}/': route()},
@@ -62,7 +64,7 @@ describe('environment contract', () => {
       delete application.source;
       expect(decode(result.PLATFORM_APPLICATION)).to.deep.equal(application);
       expect(decode(result.PLATFORM_RELATIONSHIPS)).to.deep.equal({database: [expectedRelationship]});
-      const routes = {'https://app.lndo.site/': {
+      const routes = {'https://lando.lndo.site/': {
         attributes: {}, cache: {enabled: true}, http_access: {}, id: 'main', original_url: 'https://{default}/',
         primary: true, redirects: {}, ssi: {enabled: false}, tls: {}, to: null, type: 'upstream', upstream: 'app:http',
       }};
@@ -76,7 +78,7 @@ describe('environment contract', () => {
         PLATFORM_RELATIONSHIPS: encode({database: [expectedRelationship]}), PLATFORM_ROUTES: encode(routes),
         PLATFORM_SMTP_HOST: '', PLATFORM_TREE_ID: createHash('sha1').update('app').digest('hex'),
         PLATFORM_VARIABLES: encode({'php:memory_limit': '256M'}),
-        PLATFORM_VENDOR: flavor === 'flex' ? 'upsun' : 'platformsh', PORT: '8888',
+        PLATFORM_VENDOR: flavor === 'flex' ? 'upsun' : 'platformsh', PORT: '8888', TZ: 'UTC',
       });
       Object.values(result).forEach(value => expect(value).to.be.a('string'));
       assertSorted(result);
@@ -113,7 +115,7 @@ describe('environment contract', () => {
       PLATFORM_PROJECT: 'project', PLATFORM_TREE_ID: 'tree', PLATFORM_VENDOR: 'custom',
       PLATFORM_PROJECT_ENTROPY: 'salt',
       SOCKET: '/run/app.sock', PORT: '8888'});
-    expect(decode(runtime.PLATFORM_ROUTES)).to.have.property('https://app.example.test/');
+    expect(decode(runtime.PLATFORM_ROUTES)).to.have.property('https://lando.example.test/');
     expect(env.getBuildEnv(model, 'app', opts)).to.include({
       PLATFORM_PROJECT: 'project', PLATFORM_TREE_ID: 'tree', PLATFORM_VENDOR: 'custom',
       PLATFORM_PROJECT_ENTROPY: 'salt',
@@ -222,16 +224,44 @@ describe('environment contract', () => {
   it('resolves route collisions consistently regardless of input insertion order', () => {
     const model = fixture();
     model.routes['https://{all}/'] = route({id: 'all', primary: false});
-    expect(env.getRoutesPayload(model, 'app')['https://app.lndo.site/'].id).to.equal('main');
+    expect(env.getRoutesPayload(model, 'app')['https://lando.lndo.site/'].id).to.equal('main');
     model.routes = Object.fromEntries(Object.entries(model.routes).reverse());
-    expect(env.getRoutesPayload(model, 'app')['https://app.lndo.site/'].id).to.equal('main');
+    expect(env.getRoutesPayload(model, 'app')['https://lando.lndo.site/'].id).to.equal('main');
   });
 
-  it('resolves default, all, subdomains, paths, and literal URLs', () => {
+  it('resolves route placeholders with the supplied host', () => {
     for (const [input, output] of [
-      ['https://{default}/', 'https://app.test/'], ['https://www.{default}/a', 'https://www.app.test/a'],
-      ['http://{all}/', 'http://app.test/'], ['https://fixed.example/path', 'https://fixed.example/path'],
-    ]) expect(env.resolveRouteUrl(input, 'app', 'test')).to.equal(output);
+      ['https://{default}/', 'https://my-app.lndo.site/'],
+      ['https://www.{default}/a', 'https://www.my-app.lndo.site/a'],
+      ['http://{all}/', 'http://my-app.lndo.site/'],
+      ['https://fixed.example/path', 'https://fixed.example/path'],
+    ]) expect(env.resolveRouteUrl(input, 'my-app.lndo.site')).to.equal(output);
+
+    const model = fixture();
+    expect(env.getRoutesPayload(model, 'app', {name: 'my-app'}))
+      .to.have.property('https://my-app.lndo.site/');
+    expect(env.getRoutesPayload(model, 'app')).to.have.property('https://lando.lndo.site/');
+  });
+
+  it('emits app command variables and TZ only when configured', () => {
+    const model = fixture();
+    model.applications.app.web.commands = {pre_start: 'a', start: 'b', post_start: 'c'};
+    expect(env.getRuntimeEnv(model, 'app', options())).to.include({
+      PLATFORM_PRE_APP_COMMAND: 'a', PLATFORM_APP_COMMAND: 'b', PLATFORM_POST_APP_COMMAND: 'c', TZ: 'UTC',
+    });
+
+    model.applications.app.web.commands = {pre_start: null, start: null, post_start: null};
+    model.applications.app.timezone = null;
+    expect(env.getRuntimeEnv(model, 'app', options())).to.not.include.keys(
+      'PLATFORM_PRE_APP_COMMAND', 'PLATFORM_APP_COMMAND', 'PLATFORM_POST_APP_COMMAND', 'TZ');
+  });
+
+  it('emits a tethered placeholder environment without service variables', () => {
+    const result = env.getRuntimeEnv(fixture(), 'app', {tethered: true, tetherEnvironment: 'staging'});
+    expect(result).to.include({
+      PLATFORM_RELATIONSHIPS: '', UPSUN_TETHERED: '1', UPSUN_TETHER_ENVIRONMENT: 'staging',
+    });
+    expect(result).to.not.have.property('DATABASE_HOST');
   });
 
   it('preserves full route metadata and resolves redirects without filtering other app routes', () => {
@@ -244,15 +274,15 @@ describe('environment contract', () => {
       'http://literal.test/': route({primary: false}),
     };
     const result = env.getRoutesPayload(model, 'app');
-    expect(result['https://www.app.lndo.site/']).to.deep.equal({
-      type: 'redirect', upstream: null, to: 'https://app.lndo.site/', primary: false, id: null,
+    expect(result['https://www.lando.lndo.site/']).to.deep.equal({
+      type: 'redirect', upstream: null, to: 'https://lando.lndo.site/', primary: false, id: null,
       original_url: 'https://www.{default}/', attributes: {}, tls: {}, cache: {enabled: true},
       ssi: {enabled: false}, redirects: {}, http_access: {addresses: ['allow:*']},
     });
-    expect(result['https://app.lndo.site/']).to.include({upstream: 'other:http', primary: true,
+    expect(result['https://lando.lndo.site/']).to.include({upstream: 'other:http', primary: true,
       original_url: 'https://{all}/'});
-    expect(result['https://app.lndo.site/'].http_access).to.deep.equal({basic_auth: {user: 'pass'}});
-    expect(result['https://app.lndo.site/'].tls).to.deep.equal({strict_transport_security: {enabled: true}});
+    expect(result['https://lando.lndo.site/'].http_access).to.deep.equal({basic_auth: {user: 'pass'}});
+    expect(result['https://lando.lndo.site/'].tls).to.deep.equal({strict_transport_security: {enabled: true}});
     expect(result).to.have.property('http://literal.test/');
     assertSorted(result);
   });
@@ -270,7 +300,7 @@ describe('environment contract', () => {
     expect(JSON.stringify(env.getRuntimeEnv(reverse(model), 'app', reverse(opts)))).to.equal(JSON.stringify(first));
     expect(JSON.stringify(env.getRuntimeEnv(model, 'app', opts))).to.equal(JSON.stringify(first));
     env.getApplicationPayload(model, 'app').web.locations['/'].root = 'changed';
-    env.getRoutesPayload(model, 'app')['https://app.lndo.site/'].cache.enabled = false;
+    env.getRoutesPayload(model, 'app')['https://lando.lndo.site/'].cache.enabled = false;
     env.getRelationshipsPayload(model, 'app', opts).database[0].query.is_master = false;
     expect(JSON.stringify({model, opts})).to.equal(before);
   });
