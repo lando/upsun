@@ -23,7 +23,7 @@ describe('lib/routes', () => {
     expect(proxy.app_nginx[0]).to.include({hostname: 'my-app.lndo.site', port: '80', pathname: '/'});
     expect(proxy.app_nginx[0].middlewares.map(m => m.value)).to.deep.equal([
       'host.docker.internal', 'https://my-app.lndo.site/', 'on',
-      '^https?://my-app\\.lndo\\.site/legacy/(.*)$', 'https://my-app.lndo.site/archive/${1}', 'true',
+      '^https?://my-app\\.lndo\\.site/legacy/(.*)$$', 'https://my-app.lndo.site/archive/$${1}', 'true',
     ]);
     expect(proxy.api[0]).to.include({hostname: 'api.my-app.lndo.site', port: '8888', pathname: '/v1'});
   });
@@ -33,8 +33,8 @@ describe('lib/routes', () => {
     const redirect = proxy.app_nginx.find(entry => entry.hostname === 'www.my-app.lndo.site');
     expect(redirect.middlewares).to.include.deep.members([
       {name: 'upsun-redirect', key: 'redirectregex.regex',
-        value: '^https?://www\\.my-app\\.lndo\\.site(.*)$'},
-      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://my-app.lndo.site${1}'},
+        value: '^https?://www\\.my-app\\.lndo\\.site(.*)$$'},
+      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://my-app.lndo.site$${1}'},
       {name: 'upsun-redirect', key: 'redirectregex.permanent', value: 'true'},
     ]);
     expect(warnings).to.deep.equal([]);
@@ -44,7 +44,7 @@ describe('lib/routes', () => {
     const {proxy} = getProxyConfig(model, {domain: 'lndo.site', name: 'my-app'}, targets);
     const redirect = proxy.app_nginx.find(entry => entry.pathname === '/dead');
     expect(redirect.middlewares).to.include.deep.members([
-      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://nowhere${1}'},
+      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://nowhere$${1}'},
     ]);
   });
 
@@ -53,17 +53,17 @@ describe('lib/routes', () => {
     const old = proxy.app_nginx.find(entry => entry.pathname === '/old');
     expect(old.middlewares).to.include.deep.members([
       {name: 'upsun-redirect-0', key: 'redirectregex.replacement',
-        value: 'https://my-app.lndo.site/new${1}'},
+        value: 'https://my-app.lndo.site/new$${1}'},
       {name: 'upsun-redirect-0', key: 'redirectregex.permanent', value: 'true'},
     ]);
     const gone = proxy.app_nginx.find(entry => entry.pathname === '/gone');
     expect(gone.middlewares).to.include.deep.members([
-      {name: 'upsun-redirect-1', key: 'redirectregex.replacement', value: 'https://example.com/${1}'},
+      {name: 'upsun-redirect-1', key: 'redirectregex.replacement', value: 'https://example.com/$${1}'},
       {name: 'upsun-redirect-1', key: 'redirectregex.permanent', value: 'false'},
     ]);
     expect(proxy.app_nginx[0].middlewares).to.include.deep.members([
       {name: 'upsun-redirect-2', key: 'redirectregex.regex',
-        value: '^https?://my-app\\.lndo\\.site/legacy/(.*)$'},
+        value: '^https?://my-app\\.lndo\\.site/legacy/(.*)$$'},
     ]);
   });
 
