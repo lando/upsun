@@ -1,94 +1,48 @@
-# @lando/upsun
+# Lando Upsun Plugin
 
-Lando plugin for Upsun Fixed (ex-Platform.sh). WIP revival of [`lando/platformsh`](https://github.com/lando/platformsh).
+Run [Upsun](https://upsun.com/) projects locally with [Lando](https://lando.dev).
 
-**Phase-0/1 is not product-complete OPEN parity.** It is a rename, a Fixed-only gate, and a preserved auth path (code). Flex (`.upsun`) is not supported. One Fixed local OPEN is proven (`examples/mariadb-10.4` on #221 @ `836c0b0`; `PLATFORM_RELATIONSHIPS` usable). Pull/push are **in progress** (code + unit tests; **not E2E-proven** without a live `PLATFORMSH_CLI_TOKEN`). Flex and the broader OPEN matrix are still **deferred**.
+The plugin reads your Upsun configuration — Flex (`.upsun/config.yaml`) or
+Fixed (`.platform.app.yaml` + `.platform/`) — builds the matching Lando
+services, and gives your app the same runtime contract it gets on Upsun:
+`PLATFORM_*` variables, per-relationship `DATABASE_*`-style variables, hooks,
+mounts, the `upsun` CLI, and `lando pull` / `lando push`.
 
-Branding is `@lando/upsun` / recipe `upsun`. Fixed ops still use the `platform` binary, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` semantics.
+## Install
 
-## Seed SHA (not a runtime claim)
+```bash
+lando plugin-add @lando/upsun
+```
 
-Seeded from [`lando/platformsh`](https://github.com/lando/platformsh) tip:
-
-`9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0`
-
-That SHA **is** the current `lando/platformsh` `main` tip. It is **50 commits ahead** of tag [`v0.10.0`](https://github.com/lando/platformsh/releases/tag/v0.10.0) (`111845db63b31092e80ef9f5386b97c31eba2987`). The seed `package.json` historically said `0.9.0` (both at the tip and at `v0.10.0`).
-
-This is the code we forked. That seed SHA **alone** is **not** a claim that BOOT/BUILD/START/OPEN or `PLATFORM_RELATIONSHIPS` work on current Docker. The later local proof for `examples/mariadb-10.4` is recorded separately above and in [(6) Image spike](docs/parity/06-image-spike.md).
-
-Review artifacts:
-
-* [(5) Seed SHA](docs/parity/05-parity-floor-sha.md)
-* [(6) Image spike](docs/parity/06-image-spike.md)
-* [(7) Checklist](docs/parity/07-parity-checklist.md)
-* [(8) platformsh-client call-site map](docs/parity/08-platformsh-client-map.md)
-
-## What Phase-0/1 changes (code)
-
-* Package `@lando/upsun`, recipe `upsun` (deprecated alias: `platformsh`)
-* Fixed gate: `.upsun/config.yaml` is a hard abort (`warnings.flexUnsupported` + `flavor.assertFixedOnly()` throw). Empty `.upsun/` is ignored.
-* Fixed config load: `.platform.app.yaml` and `.platform/{routes,services,applications}.yaml`
-* Auth path preserved: container CLI is `platform` with `PLATFORMSH_CLI_TOKEN`
-* Token cache `upsun.tokens` with **read-old-write-new** from `platformsh.tokens`
-* Host CLI tokens from `~/.platformsh/cache/tokens`
-* Init still uses pinned `platformsh-client@0.1.230` (`getAccountInfo`, `getProject`, `addSshKey`, `getAccessToken`)
-* Flags `--upsun-auth` / `--upsun-site` plus deprecated `--platformsh-auth` / `--platformsh-site`
-* `lando platform` / ssh scripts still call `platform` (code kept, not runtime-proven)
-* `lando pull` / `lando push` use `platform` + `PLATFORMSH_CLI_TOKEN`, Landofile `config.id`, and resume/activate before parent fallback (**needs live token proof**)
-
-## What is deferred
-
-* **OPEN / `PLATFORM_RELATIONSHIPS` runtime** — **proven (local)** for `examples/mariadb-10.4` only; broader matrix still **defer**
-* **Pull/push live token E2E** — code + unit tests only; do not claim proven without a live `PLATFORMSH_CLI_TOKEN`
-* Flex OPEN or Flex relationship rewriting — hard error until Phase 3
-* Leia / Docker example jobs — still quarantined on PRs (one local spike is not a Leia matrix)
-* Broader Docker OPEN against `docker.registry.platform.sh` is still **defer**. Registry HTTP probe: `/v2/` catalog is 403; `php-8.0` and `mariadb-10.4` manifests + layer blobs were anonymously readable (HTTP 200). Live local OPEN used `php-7.3` + `mariadb-10.4`; see [(6) Image spike](docs/parity/06-image-spike.md).
-
-## Migration from `@lando/platformsh`
+## Use
 
 ```yaml
-# Landofile
-recipe: upsun   # platformsh still works as a deprecated alias
-plugins:
-  "@lando/upsun": ^1.0.0-alpha.0
+# .lando.yml, next to .upsun/ or .platform/
+name: my-project
+recipe: upsun
 ```
 
 ```bash
-# New flags (old --platformsh-* flags still accepted)
-lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site "$PROJECT_NAME"
-
-# Fixed CLI inside the app container is `platform`
-lando platform auth:info
+lando start
+lando pull
 ```
 
-Existing Lando token caches named `platformsh.tokens` are read automatically. New writes go to `upsun.tokens`.
+Or clone from Upsun: `lando init --source upsun`.
 
-## Manual test plan
+## Docs
 
-Needs Lando + Docker on a workstation. This cloud agent cannot run Docker OPEN; the local spike was already done once by Pinchy.
-
-1. **Init (token)** — `lando init --source upsun --upsun-auth "$PLATFORMSH_CLI_TOKEN" --upsun-site <name>`
-2. **Init (cwd Fixed PHP + MariaDB)** — copy `examples/mariadb-10.4`, set `recipe: upsun`, `lando start`
-3. **`lando platform`** — `lando platform -V` / `auth:info` (uses `PLATFORMSH_CLI_TOKEN`)
-4. **Pull** — `lando pull -r none -m none` (lists remotes). Live token + resume of a paused env still **needs proof**; this cloud agent does not run that E2E.
-5. **Flex hard abort** — add `.upsun/config.yaml` and confirm start/init fails with the Phase 3 warning + error
-6. **Empty `.upsun/`** — directory only, Fixed yaml still loads
+* [Documentation](https://docs.lando.dev/upsun)
+* [Examples](https://github.com/lando/upsun/tree/main/examples)
+* [Architecture](./docs/architecture.md)
 
 ## Development
 
 ```bash
 npm install
-npm test          # lint + unit tests
+npm test
 ```
 
-Leia / Docker OPEN tests (`npm run test:leia`) stay quarantined. Packaging/CI hygiene does not restore the Leia matrix. One local `examples/mariadb-10.4` spike is not a Leia matrix.
+## Support
 
-## Maintainers
-
-* [@AaronFeledy](https://github.com/AaronFeledy)
-
-Original `@lando/platformsh` authors: [@pirog](https://github.com/pirog), [@reynoldsalec](https://github.com/reynoldsalec).
-
-## License
-
-MIT
+* [Issues](https://github.com/lando/upsun/issues/new)
+* [Slack](https://www.launchpass.com/devwithlando)

@@ -51,6 +51,7 @@ function sidebar() {
       collapsed: false,
       items: [
         {text: 'Development', link: '/development'},
+        {text: 'Architecture', link: '/architecture'},
         {text: 'Team', link: '/team'},
       ],
     },

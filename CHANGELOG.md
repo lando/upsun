@@ -1,7 +1,12 @@
-## Unreleased
+## v1.0.0-alpha.1 - Unreleased
 
-* Phase-2 Fixed pull/push: resume/activate paused or inactive envs before parent fallback; re-check `platform env -I` after wake or parent switch (wake parent if paused/inactive, else fail); wire Landofile `config.id` as `PLATFORM_PROJECT` / `-p` / `project:set-remote`; fix space-form `-r`/`-m`; add `--env` / `--project` / `--no-parent`. Still needs a live `PLATFORMSH_CLI_TOKEN` before E2E.
-* Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI, VitePress 1.5+ for the theme. Leia stays quarantined.
+* Rewrote the runtime: Upsun configuration is translated onto Lando's own service plugins (php, node, python, ruby, go, mariadb, mysql, postgres, redis, memcached, mongo, solr, elasticsearch, varnish) and official images for opensearch, valkey, rabbitmq, kafka, influxdb, chrome-headless, gotenberg and clickhouse. The Platform.sh image runtime (privileged containers, fake RPC agent, OPEN protocol, `docker.registry.platform.sh`) is gone.
+* Upsun Flex (`.upsun/*.yaml`) is supported alongside Upsun Fixed (`.platform*`); mixed repositories are rejected. All relationship forms, `source.root` multi-app, composable images (primary runtime), mounts, hooks, crons, workers and `.environment` are handled.
+* Full `PLATFORM_*` runtime contract plus per-relationship service variables (`DATABASE_HOST`, `DATABASE_URL`, ...).
+* The `upsun` (Flex) or `platform` (Fixed) CLI is installed in the app container; `lando pull` / `lando push` use it with `UPSUN_CLI_TOKEN` / `PLATFORMSH_CLI_TOKEN`; `lando init --source upsun|platformsh` clones with `<cli> get`.
+* Generated tooling: language commands, relationship shells (`lando database`, ...), `lando cron <name>`, `lando upsun` / `lando platform`.
+* PHP nginx vhosts are rendered from `web.locations` (passthru, allow, scripts, rules, expires, headers); `build.flavor` runs `composer install` / `npm install` before the build hook; `lando drush` is added for Drupal projects; tooling and `lando ssh` source `.environment`; `jq` is installed for Upsun's `.environment` templates.
+* Examples `flex-php`, `flex-node` and `fixed-php`, all verified live; Leia runs on `3-stable` and `3-edge`. The Upsun Drupal 11 scaffold installs and runs end to end.
 
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
 

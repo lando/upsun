@@ -1,5 +1,5 @@
 ---
-description: Home helpful guides for the Platform.sh recipe.
+description: Guides for the Upsun recipe.
 layout: page
 title: Guides
 sidebar: true

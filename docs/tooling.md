@@ -1,91 +1,71 @@
 ---
-description: Learn about the various out-of-the-box tooling you get with the Lando Upsun Fixed recipe.
+title: Tooling
+description: Commands the Upsun recipe adds to your project.
 ---
 
 # Tooling
 
-## Upsun Fixed CLI
+All commands are generated from your Upsun configuration and run inside the
+closest app container with the Upsun environment set, including your
+`.environment` file (so things like `DRUSH_OPTIONS_URI` and `PATH` additions
+work like they do in an Upsun SSH session). Run `lando` to list them.
 
-Every application container contains the [Upsun Fixed CLI](https://fixed.docs.upsun.com/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`.
-
-```bash
-# Who am i?
-lando platform auth:info
-
-# Tell me about my project
-lando platform project:info
-```
-
-If you find yourself unauthenticated for whatever reason. You should try the following:
+## Upsun CLI
 
 ```bash
-# Reauthenticate using already pulled down code
-lando init --source cwd --recipe upsun
-
-# Rebuild your lando app
-lando rebuild -y
+lando upsun environment:list      # Flex
+lando platform environment:list   # Fixed
 ```
 
-## Application Tooling
+The CLI is installed in the app container during `lando build`. It is
+authenticated with the token cached by `lando init` or `lando pull --auth`, and
+runs with `PLATFORM_RELATIONSHIPS` unset so it never mistakes Lando for Upsun.
 
-Lando will also setup useful [tooling commands](https://docs.lando.dev/core/v3/tooling.html) based on the `type` of your application container.
+## Language tooling
 
-These can be used to both relevant tooling and utilities that exist _inside_ the application container. Here are the defaults we provide for the `php` application container.
+| Runtime | Commands |
+|---|---|
+| php | `lando php`, `lando composer` |
+| nodejs | `lando node`, `lando npm`, `lando yarn` |
+| python | `lando python`, `lando pip` |
+| ruby | `lando ruby`, `lando bundle` |
+| golang | `lando go` |
+
+## Framework tooling
+
+`lando drush` is added when `drush/drush` is in your `composer.json` or
+`composer.lock`.
+
+## Relationship shells
+
+Each database relationship gets a command named after it:
 
 ```bash
-lando composer    Runs composer commands
-lando php         Runs php commands
+lando database -e "select 1"    # mariadb / mysql
+lando database -c "select 1"    # postgresql (psql)
+lando redis ping
+lando mongodb                   # mongosh
 ```
 
-#### Usage
+## Crons
 
 ```bash
-# Install some composer things
-lando composer require drush/drush
-
-# Run a php script
-lando php myscript.php
+lando cron <name>
 ```
 
-Of course the user can also `lando ssh` and work directly inside _any_ of the containers Lando spins up for your app.
+Runs `crons.<name>.commands.start` once, from the app directory, with
+`.environment` sourced. Crons are never scheduled automatically.
 
-```bash
-# Attach to the closest applicaiton container
-lando ssh
+## Sync
 
-# Attach to the db service
-lando ssh -s db
-```
+`lando pull` and `lando push` are documented in [Syncing](./sync.md).
 
-Note that Lando will surface commands for the _closest application_ it finds. Generally, this will be the `.platform.app.yaml` located in your project root but if you've `cd multiappsubdir` then it will use that instead.
+## SSH
 
-## Accessing relationships
+`lando ssh` drops you into the closest app container with `.environment`
+sourced, like `upsun ssh`. Use `-s db` for a service.
 
-Lando will also set up tooling commands so you can directly access the `relationships` specified in your `.platform.app.yaml`.
+## Adding more
 
-These are contextual so they will connect via the tool that makes the most sense eg `mysql` for `mariadb` and `redis-cli` for `redis`.
-
-As an example say you have the following relationships in your `.platform.app.yaml`.
-
-```yaml
-relationships:
-  database: 'db:mysql'
-  redis: 'cache:redis'
-```
-
-Then you'd expect to see the following commands and usage:
-
-```bash
-lando database  Connects to the database relationship
-lando redis     Connects to the database relationship
-```
-
-```bash
-# Drop into the mysql shell using the database relationship creds
-lando database
-
-# Drop into the redis-cli shell using the redis relationship creds
-lando redis
-```
-
-Note that some services eg `solr` provide `web` based interfaces. In these cases Lando will provide a `localhost` address you can use to access that interface.
+Extend `tooling:` in your Landofile as with any recipe. See
+[Adding more tooling](./guides/adding-more-tooling.md).

@@ -1,22 +1,71 @@
 ---
-title: Upsun Lando Plugin (Fixed)
-description: Local Lando development for Upsun Fixed (.platform) projects. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.
+title: Upsun Lando Plugin
+description: Run Upsun Flex and Upsun Fixed projects locally with Lando.
 next: ./getting-started.html
 ---
 
-::: warning Fixed-only
-This plugin is a WIP revival of `@lando/platformsh`. Phase-0/1 loads **Fixed** config only (`.platform.app.yaml` and `.platform/*`). If `.upsun/config.yaml` is present the plugin aborts. Flex is Phase 3. An empty `.upsun/` directory is ignored. OPEN is not claimed.
-:::
+# Upsun
 
-# Upsun (Fixed)
+This plugin runs [Upsun](https://upsun.com/) projects locally. It reads your
+Upsun configuration, builds the equivalent Lando services, and gives the app
+container the same runtime contract it gets on Upsun:
 
-[Upsun](https://upsun.com/) Fixed projects still use the Platform.sh yaml layout and images. Phase-0/1 of this plugin:
+- `PLATFORM_*` variables (`PLATFORM_RELATIONSHIPS`, `PLATFORM_ROUTES`,
+  `PLATFORM_APPLICATION`, `PLATFORM_VARIABLES`, ...)
+- per-relationship service variables (`DATABASE_HOST`, `DATABASE_URL`, ...)
+- `build`, `deploy` and `post_deploy` hooks, mounts, `.environment`
+- the `upsun` CLI inside the container, `lando pull` and `lando push`
 
-* Renames the package/recipe to `@lando/upsun` / `upsun`
-* Loads Fixed `.platform*` config and rejects Flex (`.upsun/config.yaml`)
-* Keeps the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` auth path
-* Phase-2 pull/push: resume/activate before parent fallback; Landofile `config.id` for `-p`. **Not E2E-proven** without a live token.
+Both Upsun configuration flavors are supported:
 
-OPEN / `PLATFORM_RELATIONSHIPS` at runtime is **deferred** until a live Docker proof. Flex local OPEN is a hard error until Phase 3.
+| Flavor | Config | CLI |
+|---|---|---|
+| **Upsun Flex** | `.upsun/config.yaml` | `upsun` |
+| **Upsun Fixed** (formerly Platform.sh) | `.platform.app.yaml` + `.platform/` | `platform` |
 
-PHP is the only supported application language. Workers, `network_storage`, and non-PHP runtimes still warn as unsupported.
+```yaml
+name: my-project
+recipe: upsun
+```
+
+Services run on Lando's own service plugins (PHP, MariaDB, PostgreSQL, Redis,
+...) rather than Upsun's production images, so current versions and ARM hosts
+work. See [Caveats](./caveats.md) for what that means.
+
+## Supported runtimes
+
+| Upsun `type` | Lando service |
+|---|---|
+| `php` | `php` (nginx) |
+| `nodejs` | `node` |
+| `python` | `python` |
+| `ruby` | `ruby` |
+| `golang` | `go` |
+| `composable` | the primary runtime in the `stack` (php, nodejs, python, ruby, golang) |
+
+`java`, `dotnet`, `elixir`, `rust` and `lisp` are not supported and produce a warning.
+
+## Supported services
+
+| Upsun `type` | Lando service |
+|---|---|
+| `mariadb`, `mysql` | `mariadb` |
+| `oracle-mysql` | `mysql` |
+| `postgresql` | `postgres` |
+| `redis`, `redis-persistent` | `redis` |
+| `memcached` | `memcached` |
+| `mongodb`, `mongodb-enterprise` | `mongo` |
+| `solr` | `solr` |
+| `elasticsearch`, `elasticsearch-enterprise` | `elasticsearch` |
+| `varnish` | `varnish` |
+| `opensearch`, `valkey`, `rabbitmq`, `kafka`, `influxdb`, `chrome-headless`, `gotenberg`, `clickhouse` | official upstream image via `compose` |
+| `network-storage` | shared volume |
+| `vault-kms` | not supported |
+
+Versions are matched exactly when Lando supports them; otherwise the nearest
+lower minor (or the newest supported) is used with a warning.
+
+## Requirements
+
+- Lando `3.21.0` or newer
+- Ports `80` and `443` free on the host for Lando's proxy
