@@ -1,4 +1,7 @@
 #!/bin/bash
+set -e
+
+. "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
 #
 # Shared Fixed sync helpers for lando pull / lando push.
 #
@@ -11,19 +14,20 @@
 # Prefer waking the current git-branch (or --env) environment. Parent fallback
 # only when wake fails and the user did not opt out (--no-parent or explicit --env).
 
-UPSUN_PLATFORM_BIN="${UPSUN_PLATFORM_BIN:-platform}"
+UPSUN_CLI_BINARY="${UPSUN_CLI_BINARY:-platform}"
+UPSUN_CLI_TOKEN_VAR="${UPSUN_CLI_TOKEN_VAR:-PLATFORMSH_CLI_TOKEN}"
 
 # Run the Fixed CLI as-is (no implied -p).
 upsun_platform_raw() {
-  "$UPSUN_PLATFORM_BIN" "$@"
+  "$UPSUN_CLI_BINARY" "$@"
 }
 
 # Run the Fixed CLI, adding -p when PLATFORM_PROJECT is set.
 upsun_platform() {
   if [ -n "${PLATFORM_PROJECT:-}" ]; then
-    "$UPSUN_PLATFORM_BIN" "$@" -p "$PLATFORM_PROJECT"
+    "$UPSUN_CLI_BINARY" "$@" -p "$PLATFORM_PROJECT"
   else
-    "$UPSUN_PLATFORM_BIN" "$@"
+    "$UPSUN_CLI_BINARY" "$@"
   fi
 }
 
@@ -92,6 +96,10 @@ upsun_parse_sync_args() {
         ;;
       --no-parent|--no-parent=*)
         UPSUN_SYNC_NO_PARENT=1
+        shift
+        ;;
+      --force)
+        UPSUN_SYNC_FORCE=1
         shift
         ;;
       --)

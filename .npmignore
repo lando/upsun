@@ -3,3 +3,4 @@ docs
 examples
 guides
 test
+scripts/update-versions.js
