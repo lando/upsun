@@ -44,4 +44,10 @@ describe('config relationships', () => {
     relationships.defaultEndpoint('varnish').should.equal('http');
     relationships.defaultEndpoint('network-storage', 'files').should.equal('files');
   });
+
+  it('returns http for mercure, chroma and qdrant', () => {
+    relationships.defaultEndpoint('mercure').should.equal('http');
+    relationships.defaultEndpoint('chroma').should.equal('http');
+    relationships.defaultEndpoint('qdrant').should.equal('http');
+  });
 });

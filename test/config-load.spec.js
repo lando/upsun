@@ -35,16 +35,18 @@ describe('config model loading', () => {
               root: 'web', passthru: '/index.php', index: ['index.php'], scripts: true,
               allow: true, rules: {}, expires: -1, headers: {},
             }},
-            commands: {pre_start: 'php setup.php', start: null},
+            commands: {pre_start: 'php setup.php', start: null, post_start: null},
             upstream: {socket_family: 'unix', protocol: 'fastcgi'},
             document_root: 'web',
           },
           hooks: {build: 'composer install', deploy: 'php deploy.php', post_deploy: ''},
           crons: {queue: {spec: '*/5 * * * *', commands: {start: 'php cron.php'}}},
           workers: {},
+          operations: {},
+          additional_hosts: {},
           variables: {env: {APP_ENV: 'local'}, php: {memory_limit: '512M'}},
           dependencies: {php: {'composer/composer': '^2'}},
-          runtime: {},
+          runtime: {extensions: [], disabled_extensions: []},
           build: {flavor: 'composer'},
           timezone: null,
           raw: {
@@ -108,11 +110,12 @@ describe('config model loading', () => {
             root: 'web', passthru: '/index.php', index: [], scripts: true,
             allow: true, rules: {}, expires: -1, headers: {},
           }},
-          commands: {pre_start: null, start: null},
+          commands: {pre_start: null, start: null, post_start: null},
           upstream: {socket_family: 'tcp', protocol: null}, document_root: 'web',
         },
-        hooks: {build: '', deploy: '', post_deploy: ''}, crons: {}, workers: {}, variables: {env: {}},
-        dependencies: {}, runtime: {}, build: {}, timezone: null,
+        hooks: {build: '', deploy: '', post_deploy: ''}, crons: {}, workers: {}, operations: {},
+        additional_hosts: {}, variables: {env: {}}, dependencies: {},
+        runtime: {extensions: [], disabled_extensions: []}, build: {}, timezone: null,
         raw: {
           name: 'app', type: 'php:8.0',
           web: {locations: {'/': {root: 'web', passthru: '/index.php'}}},
@@ -156,17 +159,42 @@ describe('config model loading', () => {
     model.routes['https://{default}/'].primary.should.equal(true);
   });
 
-  it('selects the primary composable runtime and preserves its stack packages', () => {
+  it('normalizes post_start, operations, additional_hosts, runtime lists and timezone', () => {
+    const model = load(fixture('flex-full'));
+    const app = model.applications.app;
+    app.web.commands.should.eql({pre_start: null, start: null, post_start: 'echo post'});
+    app.operations.should.eql({hello: {role: null, commands: {start: 'echo operation-ran'}}});
+    app.additional_hosts.should.eql({'example.internal': '127.0.0.1'});
+    app.runtime.should.eql({extensions: ['xsl', 'blackfire'], disabled_extensions: []});
+    app.timezone.should.equal('Europe/Paris');
+    model.applications.api.web.commands.start.should.equal('node server.js');
+  });
+
+  it('parses composable stack.runtimes with the first runtime primary', () => {
     const model = load(fixture('flex-composable'));
     const app = model.applications.app;
     app.type.should.eql({runtime: 'php', version: '8.4'});
     app.composable.should.eql({
       channel: '26.05',
-      runtimes: {nodejs: '22', php: '8.4'},
-      packages: ['nodejs@22', {'php@8.4': {extensions: ['redis', 'xsl']}}],
+      runtimes: [
+        {runtime: 'php', version: '8.4', options: {extensions: ['redis', 'xsl']}},
+        {runtime: 'nodejs', version: '22', options: {}},
+      ],
+      packages: ['jq'],
     });
+    app.runtime.extensions.should.eql(['redis', 'xsl']);
+    model.warnings.should.eql([]);
+  });
+
+  it('keeps the legacy flat composable stack and warns about ignored runtimes', () => {
+    const model = load(fixture('flex-composable-legacy'));
+    const app = model.applications.app;
+    app.type.should.eql({runtime: 'python', version: '3.12'});
+    app.composable.runtimes.should.have.length(2);
+    app.composable.packages.should.eql(['curl']);
     model.warnings.should.have.length(1);
-    model.warnings[0].code.should.equal('composable-runtime-picked');
+    model.warnings[0].should.include({code: 'composable-runtime-picked'});
+    model.warnings[0].data.ignored.should.eql(['ruby']);
   });
 
   it('deep-merges Flex files alphabetically with later values winning', () => {

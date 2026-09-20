@@ -1,12 +1,7 @@
 applications:
   app:
     type: composable:26.05
-    stack:
-      runtimes:
-        - "php@8.4":
-            extensions: [redis, xsl]
-        - "nodejs@22"
-      packages: [jq]
+    stack: ["python@3.12", "ruby@3.3", curl]
 services: {}
 routes:
   "https://{default}/":
