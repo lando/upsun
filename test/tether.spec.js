@@ -98,14 +98,17 @@ const cleanup = context => {
   fs.rmSync(context.root, {recursive: true, force: true});
 };
 
-describe('Upsun tether script', () => {
-  afterEach(() => {
-    while (contexts.length) cleanup(contexts.pop());
-  });
+const cleanupAll = () => {
+  while (contexts.length) {
+    cleanup(contexts[0]);
+    contexts.shift();
+  }
+};
 
-  after(() => {
-    while (contexts.length) cleanup(contexts.pop());
-  });
+describe('Upsun tether script', () => {
+  afterEach(cleanupAll);
+
+  after(cleanupAll);
 
   it('opens one tunnel per relationship on sequential ports', () => {
     const context = makeContext();
