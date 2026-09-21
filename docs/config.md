@@ -24,8 +24,6 @@ config:
   tethered: false   # true for the git branch, or an environment ID string
 ```
 
-`recipe: platformsh` remains as a deprecated alias.
-
 ## How configuration is read
 
 **Flex.** First-level YAML files in `.upsun/` are merged on `applications`,
@@ -47,7 +45,7 @@ A repository containing both formats is an error.
 | `relationships` | Supports shorthand, object and `service:endpoint` forms. |
 | `mounts` | Creates directories under `/app` on every start. No volumes are generated. |
 | `web.commands.pre_start` | Runs before the app command in the non-PHP start wrapper; PHP runs it in the every-start sequence. |
-| `web.commands.start` | Exposed as `PLATFORM_APP_COMMAND`; the non-PHP wrapper executes it on port `8888`. |
+| `web.commands.start` | Exposed as `PLATFORM_APP_COMMAND`; the non-PHP service gets `PORT=8888` and the wrapper executes the command. |
 | `web.commands.post_start` | Runs on every start through the post-start runner. |
 | `web.locations` | Renders nginx locations. Non-PHP apps get an nginx sidecar; apps without `web.commands.start` can be static sites. |
 | `hooks.build` | Runs after dependency and build-flavor installation during rebuild. |
@@ -109,9 +107,10 @@ every start before deploy hooks run.
 | MariaDB/MySQL password | `upsun` |
 | PostgreSQL password | `upsun` |
 
-`configuration.schemas`, `configuration.endpoints`, each endpoint's
-`default_schema` / `default_database`, and `admin`, `rw` or `ro` privileges are
-used to create the local databases and grants.
+`configuration.schemas` selects the databases to create. Endpoint names and
+their `admin`, `rw` or `ro` privileges create users and grants.
+`default_schema` / `default_database` selects the connection path reported to
+that endpoint's relationship.
 
 `mercure`, `chroma` and `qdrant` use their official images. Mercure gets local
 publisher/subscriber keys, Qdrant exposes ports `6333` and `6334`, and Valkey
@@ -213,4 +212,5 @@ apply.
 
 ### recipe-deprecated-alias
 
-`recipe: platformsh` is deprecated; use `recipe: upsun`.
+The legacy recipe identifier was detected. New Landofiles must use
+`recipe: upsun`.

@@ -171,7 +171,7 @@ assembly:
 | non-PHP app | `<app>` | `/helpers/upsun-start.sh`; port `8888` | database clients, jq, rsync, SSH; dependencies and build hook |
 | worker | `<app>--<worker>` | start wrapper; no proxy | app root setup; no app build steps |
 | cron | `<app>--cron` | `/helpers/upsun-crond.sh`; no proxy | app root setup plus Supercronic; no app build steps |
-| nginx sidecar | `<app>_nginx` | upstream app or static files on port `80` | rendered vhost only |
+| non-PHP nginx sidecar | `<app>_nginx` | upstream app or static files on port `80` | rendered vhost only |
 
 Every mapped runtime definition carries temporary `upsun` metadata with
 `role`, model app, locations, relationships, proxy target and static state.
@@ -232,9 +232,9 @@ For a Landofile named `my-project`, `www.{default}` resolves to
 
 ## CLI and sync
 
-`lib/cli.js` freezes API endpoints at `https://api.upsun.com` and
-`https://auth.upsun.com`. Flex uses `upsun` / `UPSUN_CLI_TOKEN`; Fixed uses
-`platform` / `PLATFORMSH_CLI_TOKEN`.
+`lib/cli.js` exports the frozen `API_CONFIG` with endpoints
+`https://api.upsun.com` and `https://auth.upsun.com`. Flex uses `upsun` /
+`UPSUN_CLI_TOKEN`; Fixed uses `platform` / `PLATFORMSH_CLI_TOKEN`.
 
 Pull and push expose authentication, environment, project, relationship, mount,
 `--skip-db`, `--skip-files` and `-A/--app` options. Pull also exposes
@@ -249,22 +249,22 @@ the generated tether environment.
 
 | Script | Arguments | Main configuration |
 |---|---|---|
-| `upsun-env.sh` | sourced | `UPSUN_TETHER_ENV_FILE`, `UPSUN_CLI_CONTEXT`, `PLATFORM_APP_DIR` |
-| `upsun-exec.sh` | command and args | sources `upsun-env.sh`, then `exec` |
-| `upsun-start.sh` | none | `UPSUN_ENV_HELPER`, `UPSUN_TETHERED`, `UPSUN_TETHER_TIMEOUT` (120), app command variables |
+| `upsun-env.sh` | sourced | `UPSUN_TETHER_ENV_FILE` (`/tmp/upsun-tether.env`), `UPSUN_CLI_CONTEXT` (skip the tether file when `1`), `PLATFORM_APP_DIR` |
+| `upsun-exec.sh` | command and arguments | sources `upsun-env.sh`, then `exec` |
+| `upsun-start.sh` | none | `UPSUN_ENV_HELPER`, `UPSUN_TETHERED`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_TETHER_TIMEOUT` (120), `PLATFORM_APP_DIR`, `PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND` |
 | `upsun-hook.sh` | `build`, `deploy`, `post_deploy`, `pre_start`, `post_start` | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-operation.sh` | operation name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-cron.sh` | cron name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
-| `upsun-crond.sh` | none | `UPSUN_CRONTAB` (`/tmp/crontab`), `UPSUN_SUPERCRONIC`, `UPSUN_CRON_SCRIPT` |
+| `upsun-crond.sh` | none | `PLATFORM_APPLICATION`, `UPSUN_CRONTAB` (`/tmp/crontab`), `UPSUN_SUPERCRONIC`, `UPSUN_CRON_SCRIPT` |
 | `upsun-php-extensions.sh` | `--enable a,b --disable c` | `UPSUN_PHP_BIN`, `UPSUN_PHP_EXT_INSTALLER`, `UPSUN_PHP_CONF_DIR` |
-| `upsun-xdebug.sh` | `on [mode]`, `off` | PHP conf/pool paths plus overridable enable, process and signal commands |
-| `upsun-db-init.sh` | host, `mysql`/`pgsql`, base64 SQL | `UPSUN_DB_WAIT` (60), database client overrides |
-| `upsun-install-supercronic.sh` | none | fixed version, `UPSUN_CURL`, `UPSUN_INSTALL_DIR` |
+| `upsun-xdebug.sh` | `on [mode]`, `off` | `UPSUN_PHP_CONF_DIR`, `UPSUN_FPM_POOL_DIR`, `UPSUN_PHP_EXT_ENABLE`, `UPSUN_PGREP`, `UPSUN_KILL` |
+| `upsun-db-init.sh` | host, `mysql`/`pgsql`, base64 SQL | `UPSUN_DB_WAIT` (60), `UPSUN_MYSQL_CLIENT`, `UPSUN_PSQL_CLIENT`; exits 4 on timeout |
+| `upsun-install-supercronic.sh` | none | `SUPERCRONIC_VERSION`, `UPSUN_CURL`, `UPSUN_INSTALL_DIR` |
 | `upsun-install-node.sh` | major version | `UPSUN_CURL`, `UPSUN_NODE_PREFIX`, `UPSUN_NODE_BIN`, `UPSUN_NODE_DIST` |
 | `upsun-install-cli.sh` | `upsun`/`platform`, optional version | `UPSUN_CLI_INSTALL_DIR` |
-| `upsun-tether.sh` | `open`, `--close`, `--info` | CLI metadata, project/app/environment, paths, base port 30000, wait 30 |
-| `upsun-pull.sh`, `upsun-push.sh` | sync options | CLI metadata, token, project, app, tether state |
-| `upsun-sync-env.sh` | sourced | shared sync argument parsing and environment activation |
+| `upsun-tether.sh` | `open`, `--close`, `--info` | `UPSUN_CLI_BINARY`, `UPSUN_CLI_TOKEN_VAR`, `PLATFORM_PROJECT`, `PLATFORM_APPLICATION_NAME`, `UPSUN_TETHER_ENVIRONMENT`, `UPSUN_TETHER_DIR`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_FPM_POOL_DIR`, `UPSUN_TETHER_BASE_PORT` (30000), `UPSUN_TETHER_WAIT` (30) |
+| `upsun-pull.sh`, `upsun-push.sh` | sync flags, plus `--all-mounts`, `--skip-db`, `--skip-files`, `-A/--app` where supported | `UPSUN_TETHERED` skips databases; `PLATFORM_APPLICATION_NAME` defaults `-A` |
+| `upsun-sync-env.sh` | sourced | shared sync argument parsing, project binding and environment activation |
 
 Generated files include `/tmp/upsun-tether.env`, tunnel PID/log files under
 `/tmp/upsun-tether`, `/tmp/crontab`, PHP-FPM pool fragments for tether/Xdebug,

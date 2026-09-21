@@ -5,10 +5,10 @@ description: Commands the Upsun recipe adds to your project.
 
 # Tooling
 
-All commands are generated from your Upsun configuration and run inside the
-closest app container with the Upsun environment set, including your
-`.environment` file (so things like `DRUSH_OPTIONS_URI` and `PATH` additions
-work like they do in an Upsun SSH session). Run `lando` to list them.
+Commands are generated from your Upsun configuration. Language, framework,
+CLI, cron, operation, Xdebug, tether and sync commands run in the closest app
+container with `.environment` sourced. Relationship shells run in the related
+service container. Run `lando` to list them.
 
 ## Upsun CLI
 

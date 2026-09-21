@@ -7,7 +7,8 @@ description: Start an Upsun project locally with Lando.
 
 ## From an existing checkout
 
-Add a Landofile next to your `.upsun/` (Flex) or `.platform/` (Fixed) directory:
+Add a Landofile next to `.upsun/` (Flex), or next to `.platform.app.yaml` /
+`.platform/` (Fixed):
 
 ```yaml
 name: my-project

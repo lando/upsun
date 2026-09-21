@@ -29,7 +29,8 @@ services run on Lando's own images. Consequences:
   beside PHP is installed in the PHP container; other secondary runtimes warn.
 - `java`, `dotnet`, `elixir`, `rust`, `lisp` apps and `vault-kms` services are
   not created.
-- Versions Lando does not ship fall back to the nearest lower minor.
+- Versions Lando does not ship use the nearest lower version in the same major,
+  or the newest supported version when that major is unavailable.
 
 ## Proxy
 

@@ -65,7 +65,8 @@ work. See [Caveats](./caveats.md) for what that means.
 | `vault-kms` | not supported |
 
 Versions are matched exactly when Lando supports them; otherwise the nearest
-lower minor (or the newest supported) is used with a warning.
+lower version in the same major (or the newest supported) is used with a
+warning.
 
 ## Requirements
 

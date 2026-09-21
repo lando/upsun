@@ -40,5 +40,6 @@ in `test/fixtures`; `builders/upsun.js`, `app.js` and `index.js` only glue.
 ## YAML dependency
 
 Keep `js-yaml` on major version 3 until the configuration loader is ported. The
-`!archive` and `!include` custom types use the v3 `yaml.Type`, `Schema.create`
-and `safeLoad` APIs; version 4 changes all three.
+`!archive` and `!include` custom types use the v3 `yaml.Type` and
+`Schema.create` APIs, while local project metadata uses `safeLoad`; version 4
+changes these APIs.
