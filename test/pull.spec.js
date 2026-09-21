@@ -47,6 +47,11 @@ describe('pull tooling', () => {
     options.app.should.include({passthrough: true, string: true});
     options.app.alias.should.eql(['A']);
     options['skip-db'].boolean.should.equal(true);
+    // Lando only copies argv flags into inquirer answers for options that carry an interactive block,
+    // so the skip flags need a silent one for the relationship/mount prompts to see them
+    options['skip-db'].interactive.when({}).should.equal(false);
+    options['skip-db'].interactive.weight.should.be.below(options.relationship.interactive.weight);
+    options['skip-files'].interactive.weight.should.be.below(options.mount.interactive.weight);
   });
 
   it('skips interactive prompts when --skip-db / --skip-files are given', () => {
