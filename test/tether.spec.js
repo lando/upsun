@@ -195,6 +195,9 @@ describe('Upsun tether script', () => {
     after.stdout.should.include('Environment: feature');
     after.stdout.should.include('database: port 30001 (running)');
     after.stdout.should.include('"database"');
+    // credentials are redacted from the informational dump
+    after.stdout.should.not.include('secret');
+    after.stdout.should.include('"password": "***"');
   });
 
   it('re-opening replaces existing tunnels', () => {

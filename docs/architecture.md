@@ -267,7 +267,7 @@ the generated tether environment.
 | `upsun-sync-env.sh` | sourced | shared sync argument parsing, project binding and environment activation |
 
 Generated files include `/tmp/upsun-tether.env`, tunnel PID/log files under
-`/tmp/upsun-tether`, `/tmp/crontab`, PHP-FPM pool fragments for tether/Xdebug,
+`/run/upsun-tether`, `/tmp/crontab`, PHP-FPM pool fragments for tether/Xdebug,
 and PHP ini fragments for app config, Xdebug and Mailpit.
 
 ## Testing

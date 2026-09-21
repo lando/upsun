@@ -6,7 +6,8 @@ set -e
 # shellcheck source=/dev/null
 . "$(dirname "$0")/upsun-sync-env.sh"
 
-UPSUN_TETHER_DIR="${UPSUN_TETHER_DIR:-/tmp/upsun-tether}"
+# Root-owned state (pid files the close step kills); the env file itself stays readable by the app user
+UPSUN_TETHER_DIR="${UPSUN_TETHER_DIR:-/run/upsun-tether}"
 UPSUN_TETHER_ENV_FILE="${UPSUN_TETHER_ENV_FILE:-/tmp/upsun-tether.env}"
 UPSUN_FPM_POOL_DIR="${UPSUN_FPM_POOL_DIR:-/usr/local/etc/php-fpm.d}"
 UPSUN_TETHER_BASE_PORT="${UPSUN_TETHER_BASE_PORT:-30000}"
@@ -144,7 +145,7 @@ open_tether() {
   export UPSUN_CLI_CONTEXT=1
   export "${UPSUN_CLI_TOKEN_VAR?}"
   export HOME="${HOME:-/root}"
-  mkdir -p "$UPSUN_TETHER_DIR"
+  mkdir -p -m 0700 "$UPSUN_TETHER_DIR"
   close_tether 1
 
   if [ -z "$environment" ]; then
@@ -218,7 +219,7 @@ show_info() {
     printf '%s: port %s (%s)\n' "$rel" "$port" "$status"
   done
   shopt -u nullglob
-  jq . <<< "$relationships"
+  jq 'map_values(map(if has("password") and .password != null then .password = "***" else . end))' <<< "$relationships"
 }
 
 case "${1:-open}" in

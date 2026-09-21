@@ -27,7 +27,7 @@ then opens the tether during the every-start runner. Mailpit remains local unles
 opens one `tunnel:single` process per relationship. Local ports start at `30000`
 and increment in relationship-name order. The rewritten environment is stored in
 `/tmp/upsun-tether.env`; tunnel PID and log files live under
-`/tmp/upsun-tether/`.
+`/run/upsun-tether/` (root-owned). `lando tether --info` redacts passwords.
 
 PHP apps also receive
 `/usr/local/etc/php-fpm.d/zzz-upsun-tether.conf`, and PHP-FPM is reloaded so web
