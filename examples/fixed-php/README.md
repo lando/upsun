@@ -26,10 +26,11 @@ lando exec app -- env | grep "PLATFORM_APPLICATION_NAME=app"
 lando exec app -- env | grep "FOO=fixed"
 
 # Should expose per-relationship service environment variables
-lando exec app -- env | grep "DATABASE_URL=pgsql://postgres:@db:5432/main"
+lando exec app -- env | grep "DATABASE_URL=pgsql://upsun:upsun@db:5432/main"
 lando exec app -- env | grep "CACHE_URL=memcached://memcache:11211"
 
 # Should serve the app and connect to its relationships
+curl -sk https://upsun-fixed-php.lndo.site/ | grep "relationships=cache,database"
 lando exec app -- curl -s http://app_nginx/ | grep "relationships=cache,database"
 lando exec app -- curl -s http://app_nginx/ | grep "db-ok"
 lando exec app -- curl -s http://app_nginx/ | grep "memcached-ok"

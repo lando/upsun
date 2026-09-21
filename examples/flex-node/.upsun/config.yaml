@@ -9,7 +9,9 @@ applications:
         source_path: data
     web:
       commands:
+        pre_start: echo pre-start > pre.txt
         start: node server.js
+        post_start: echo post-start > post.txt
       upstream:
         socket_family: tcp
     hooks:

@@ -9,6 +9,8 @@ applications:
         source: storage
         source_path: files
     web:
+      commands:
+        pre_start: echo pre-start > web/pre.txt
       locations:
         "/":
           root: web
@@ -24,9 +26,17 @@ applications:
         spec: "*/5 * * * *"
         commands:
           start: echo cron-ran
+      tick:
+        spec: "* * * * *"
+        commands:
+          start: date > /app/web/tick.txt
+    runtime:
+      extensions: [xsl]
     variables:
       env:
         FOO: bar
+      php:
+        memory_limit: 384M
 
 services:
   db:

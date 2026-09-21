@@ -3,6 +3,11 @@ header('Content-Type: text/plain');
 echo 'app=' . getenv('PLATFORM_APPLICATION_NAME') . "\n";
 echo 'vendor=' . getenv('PLATFORM_VENDOR') . "\n";
 echo 'foo=' . getenv('FOO') . "\n";
+echo 'pre=' . trim(@file_get_contents(__DIR__ . '/pre.txt')) . "\n";
+echo 'memory_limit=' . ini_get('memory_limit') . "\n";
+echo 'xsl=' . (extension_loaded('xsl') ? 'yes' : 'no') . "\n";
+echo 'xdebug=' . (extension_loaded('xdebug') ? ini_get('xdebug.mode') : 'off') . "\n";
+echo 'smtp=' . getenv('PLATFORM_SMTP_HOST') . "\n";
 
 $relationships = json_decode(base64_decode(getenv('PLATFORM_RELATIONSHIPS')), true);
 echo 'relationships=' . implode(',', array_keys($relationships)) . "\n";

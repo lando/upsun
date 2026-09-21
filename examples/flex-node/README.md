@@ -31,7 +31,24 @@ lando exec api -- curl -s http://localhost:8888/ | grep "relationships=database"
 
 # Should connect to PostgreSQL through the service environment variables
 lando exec api -- curl -s http://localhost:8888/ | grep "db-ok"
-lando exec api -- env | grep "DATABASE_URL=pgsql://postgres:@db:5432/main"
+lando exec api -- env | grep "DATABASE_URL=pgsql://upsun:upsun@db:5432/main"
+
+# Should serve the app on the Lando app name through the proxy
+curl -sk https://upsun-flex-node.lndo.site/ | grep "app=api"
+
+# Should run pre_start before and post_start after the start command
+lando exec api -- curl -s http://localhost:8888/ | grep "pre=pre-start"
+lando exec api -- curl -s http://localhost:8888/ | grep "post=post-start"
+
+# Should install database clients, rsync, ssh and jq for sync and hooks
+lando exec api -- which mysql
+lando exec api -- which psql
+lando exec api -- which rsync
+lando exec api -- which jq
+
+# Should create the PostgreSQL role with a password every start
+lando exec api -- env | grep "DATABASE_PASSWORD=upsun"
+lando database -c "select current_user" | grep upsun
 
 # Should create mounts
 lando exec api -- ls -d /app/tmp-data

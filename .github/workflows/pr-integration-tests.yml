@@ -16,6 +16,9 @@ jobs:
           - examples/flex-php
           - examples/flex-node
           - examples/fixed-php
+          - examples/flex-multiapp
+          - examples/flex-composable
+          - examples/flex-static
         lando-version:
           - 3-stable
           - 3-edge

@@ -4,12 +4,22 @@ const {Client} = require('pg');
 const port = process.env.PORT || 8888;
 const relationships = JSON.parse(Buffer.from(process.env.PLATFORM_RELATIONSHIPS || '', 'base64').toString() || '{}');
 
+const readMarker = file => {
+  try {
+    return require('fs').readFileSync(file, 'utf8').trim();
+  } catch {
+    return '';
+  }
+};
+
 http.createServer(async (req, res) => {
   const lines = [
     `app=${process.env.PLATFORM_APPLICATION_NAME}`,
     `greeting=${process.env.GREETING}`,
     `relationships=${Object.keys(relationships).join(',')}`,
     `port=${port}`,
+    `pre=${readMarker('pre.txt')}`,
+    `post=${readMarker('post.txt')}`,
   ];
   try {
     const client = new Client({
