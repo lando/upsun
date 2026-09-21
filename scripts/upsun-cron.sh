@@ -30,9 +30,9 @@ if [ -z "$cron_body" ]; then
 fi
 
 app_dir="${PLATFORM_APP_DIR:-/app}"
-if [ -f "$app_dir/.environment" ]; then
-  set -a; . "$app_dir/.environment"; set +a
-fi
+# The shared helper loads the tether env (when tethered) and then the app's .environment
+# shellcheck source=/dev/null
+. "${UPSUN_ENV_HELPER:-$(dirname "$0")/upsun-env.sh}"
 cd "$app_dir"
 lando_pink "Running cron $cron_name"
 printf '%s\n' "$cron_body" | bash -e

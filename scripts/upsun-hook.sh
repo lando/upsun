@@ -30,12 +30,9 @@ fi
 [ -n "$hook_body" ] || exit 0
 
 app_dir="${PLATFORM_APP_DIR:-/app}"
-if [ -f "$app_dir/.environment" ]; then
-  set -a
-  # shellcheck source=/dev/null
-  . "$app_dir/.environment"
-  set +a
-fi
+# The shared helper loads the tether env (when tethered) and then the app's .environment
+# shellcheck source=/dev/null
+. "${UPSUN_ENV_HELPER:-$(dirname "$0")/upsun-env.sh}"
 
 cd "$app_dir"
 lando_pink "Running Upsun $hook_name hook"

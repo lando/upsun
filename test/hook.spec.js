@@ -27,6 +27,25 @@ describe('Upsun hooks', () => {
     fs.rmSync(appDir, {recursive: true});
   });
 
+  it('exposes the tethered relationships to hooks', () => {
+    const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-hook-'));
+    const tetherFile = path.join(appDir, 'tether.env');
+    fs.writeFileSync(tetherFile, 'DATABASE_HOST=127.0.0.1\n');
+    const application = Buffer.from(JSON.stringify({
+      hooks: {deploy: 'printf "%s" "$DATABASE_HOST" > hook-result'},
+    })).toString('base64');
+
+    execFileSync('bash', [hook, 'deploy'], {
+      env: {
+        ...process.env, PLATFORM_APPLICATION: application, PLATFORM_APP_DIR: appDir, UPSUN_LOG_HELPER: logHelper,
+        UPSUN_ENV_HELPER: envHelper, UPSUN_TETHER_ENV_FILE: tetherFile,
+      },
+    });
+
+    fs.readFileSync(path.join(appDir, 'hook-result'), 'utf8').should.equal('127.0.0.1');
+    fs.rmSync(appDir, {recursive: true});
+  });
+
   it('silently skips an absent hook', () => {
     const output = execFileSync('bash', [hook, 'build'], {
       encoding: 'utf8',
