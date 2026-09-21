@@ -32,10 +32,10 @@ describe('lib/routes', () => {
     const {proxy, warnings} = getProxyConfig(model, {domain: 'lndo.site', name: 'my-app'}, targets);
     const redirect = proxy.app_nginx.find(entry => entry.hostname === 'www.my-app.lndo.site');
     expect(redirect.middlewares).to.include.deep.members([
-      {name: 'upsun-redirect', key: 'redirectregex.regex',
+      {name: 'upsun-redirect-https', key: 'redirectregex.regex',
         value: '^https?://www\\.my-app\\.lndo\\.site(?::\\d+)?(.*)$$'},
-      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://my-app.lndo.site$${1}'},
-      {name: 'upsun-redirect', key: 'redirectregex.permanent', value: 'true'},
+      {name: 'upsun-redirect-https', key: 'redirectregex.replacement', value: 'https://my-app.lndo.site$${1}'},
+      {name: 'upsun-redirect-https', key: 'redirectregex.permanent', value: 'true'},
     ]);
     expect(warnings).to.deep.equal([]);
   });
@@ -44,7 +44,7 @@ describe('lib/routes', () => {
     const {proxy} = getProxyConfig(model, {domain: 'lndo.site', name: 'my-app'}, targets);
     const redirect = proxy.app_nginx.find(entry => entry.pathname === '/dead');
     expect(redirect.middlewares).to.include.deep.members([
-      {name: 'upsun-redirect', key: 'redirectregex.replacement', value: 'https://nowhere$${1}'},
+      {name: 'upsun-redirect-https', key: 'redirectregex.replacement', value: 'https://nowhere$${1}'},
     ]);
   });
 
@@ -70,5 +70,18 @@ describe('lib/routes', () => {
   it('ignores routes whose app has no target', () => {
     const {proxy} = getProxyConfig(model, {domain: 'lndo.site', name: 'my-app'}, {app: targets.app});
     expect(proxy).to.not.have.property('api');
+  });
+  it('redirects plain http routes without catching the https upstream', () => {
+    const upgrade = {...model, routes: {
+      ...model.routes,
+      'http://{default}/': {type: 'redirect', to: 'https://{default}/', primary: false, redirects: {}, raw: {}},
+    }};
+    const {proxy} = getProxyConfig(upgrade, {domain: 'lndo.site', name: 'my-app'}, targets);
+    const entry = proxy.app_nginx.find(e => e.hostname === 'my-app.lndo.site' && e.pathname === '/');
+    const redirect = entry.middlewares.filter(m => m.name === 'upsun-redirect-http');
+    // an https? regex here would match the https router too and loop forever
+    expect(redirect.map(m => m.value)).to.deep.equal([
+      '^http://my-app\\.lndo\\.site(?::\\d+)?(.*)$$', 'https://my-app.lndo.site$${1}', 'true',
+    ]);
   });
 });
