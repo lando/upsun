@@ -26,6 +26,16 @@ describe('lib/nginx', () => {
     expect(vhost.indexOf('/sites/default/files {')).to.be.below(vhost.indexOf('location / {'));
   });
 
+  it('anchors location roots under the app source root', () => {
+    const app = {sourceRoot: 'backend', web: {locations: {
+      '/': {root: 'web', passthru: '/index.php'},
+      '/files': {root: 'web/files', allow: true},
+    }}};
+    const vhost = renderVhost(app, 'backend/web');
+    expect(vhost).to.not.include('alias "{{LANDO_WEBROOT}}/../');
+    expect(vhost).to.include('alias "{{LANDO_WEBROOT}}/files";');
+  });
+
   it('falls back to a plain index.php passthru without locations', () => {
     expect(renderVhost({web: {}}, '.')).to.include('try_files $uri $uri/ /index.php$is_args$args;');
   });
