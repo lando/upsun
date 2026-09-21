@@ -210,8 +210,10 @@ module.exports = {
             services[serviceName] = def;
             continue;
           }
+          // Tunnels are opened in the app container only; sidecars must not wait for them
+          const serviceEnv = role === 'app' ? env : _.omit(env, ['UPSUN_TETHERED']);
           def.overrides = _.merge({}, def.overrides, {
-            environment: {...env, ...(definition.overrides?.environment || {})},
+            environment: {...serviceEnv, ...(definition.overrides?.environment || {})},
           });
           const install = role === 'app' || role === 'worker' ? [getInstallStep(flavor)] : [];
           def.build_as_root_internal = [...definition.build_as_root, ...install];
@@ -226,6 +228,7 @@ module.exports = {
             worker: definition.upsun.worker,
             databases: serviceName === closestApp ? databases : [],
             tethered,
+            tetherEnv: {...cliEnv, UPSUN_CLI_BINARY: cli.binary, UPSUN_CLI_TOKEN_VAR: cli.tokenVar},
           });
           if (commands.length) startCommands[serviceName] = commands;
           mailFrom.push(serviceName);

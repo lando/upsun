@@ -35,7 +35,7 @@ const makeApp = recipe => {
         startCommands: {
           'drupal': [
             {name: 'mounts', cmd: 'mkdir -p "/app/x"', user: 'app'},
-            {name: 'tether', cmd: '/helpers/upsun-tether.sh open', user: 'root'},
+            {name: 'tether', cmd: '/helpers/upsun-tether.sh open', user: 'root', env: {UPSUN_CLI_TOKEN: 'tok'}},
           ],
           'drupal--queue': [{name: 'mounts', cmd: 'mkdir -p "/app/q"', user: 'app'}],
           'ghost': [{name: 'mounts', cmd: 'x', user: 'app'}],
@@ -86,6 +86,7 @@ describe('app.js', () => {
       },
     });
     expect(commands[1].opts.user).to.equal('root');
+    expect(commands[1].opts.environment).to.deep.equal({UPSUN_CLI_TOKEN: 'tok'});
     expect(commands[2].opts.user).to.equal('node');
   });
 

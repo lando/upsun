@@ -152,6 +152,11 @@ describe('builders/upsun', () => {
     expect(app.upsun.startCommands.app.map(command => command.name))
         .to.deep.equal(['mounts', 'tether', 'deploy', 'pre_start']);
     expect(tooling.tether).to.include({service: 'app', user: 'root'});
+    // the automatic tether step must carry the CLI contract the tooling has
+    const tetherStep = app.upsun.startCommands.app.find(c => c.name === 'tether');
+    expect(tetherStep.env).to.include({UPSUN_CLI_BINARY: 'upsun', UPSUN_CLI_TOKEN_VAR: 'UPSUN_CLI_TOKEN',
+      UPSUN_CLI_CONTEXT: '1', PLATFORM_PROJECT: 'lando'});
+    expect(tetherStep.env).to.have.property('UPSUN_CLI_TOKEN');
     expect(tooling).to.not.have.any.keys('database', 'redis');
     expect(app.upsun).to.include({tethered: true, tetherEnvironment: 'staging'});
   });
@@ -232,5 +237,13 @@ describe('builders/upsun', () => {
       code: 'php-extension-unsupported',
       message: 'unsupported',
     }).title).to.equal('PHP extension not available locally');
+  });
+  it('does not tether workers or cron sidecars', () => {
+    const {instance} = build(fixture('flex-full'), {}, {crons: true, app: 'app', tethered: 'staging'});
+    const {services} = instance.config;
+    expect(services.app.overrides.environment.UPSUN_TETHERED).to.equal('1');
+    // tunnels live in the app container; sidecars would otherwise wait for a file that never appears
+    expect(services['app--queue'].overrides.environment).to.not.have.property('UPSUN_TETHERED');
+    expect(services['app--cron'].overrides.environment).to.not.have.property('UPSUN_TETHERED');
   });
 });

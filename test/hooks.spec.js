@@ -61,6 +61,7 @@ describe('lib/hooks', () => {
   it('inserts the tether step as root and skips database init when tethered', () => {
     const result = getStartCommands(model, 'app', {
       tethered: true,
+      tetherEnv: {UPSUN_CLI_BINARY: 'upsun', UPSUN_CLI_TOKEN: 'tok'},
       databases: [{service: 'db', host: 'db', dialect: 'mysql', statements: ['SELECT 1;']}],
     });
 
@@ -75,6 +76,7 @@ describe('lib/hooks', () => {
     expect(result[1]).to.deep.equal({
       name: 'tether',
       cmd: '/helpers/upsun-tether.sh open',
+      env: {UPSUN_CLI_BINARY: 'upsun', UPSUN_CLI_TOKEN: 'tok'},
       user: 'root',
     });
   });

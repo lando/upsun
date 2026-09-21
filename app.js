@@ -85,7 +85,7 @@ function buildRunCommands(app) {
   const meUser = service => (_.find(app.info || [], {service}) || {}).meUser || 'www-data';
   return Object.entries(_.get(app, 'upsun.startCommands', {})).flatMap(([service, commands]) => {
     if (!app.containers?.[service]) return [];
-    return commands.map(({name, cmd, user}) => ({
+    return commands.map(({name, cmd, user, env = {}}) => ({
       id: app.containers[service],
       cmd: ['/helpers/exec-multiliner.sh', Buffer.from(cmd, 'utf8').toString('base64')],
       compose: app.compose,
@@ -96,7 +96,7 @@ function buildRunCommands(app) {
         user: user === 'root' ? 'root' : meUser(service),
         services: [service],
         cstdio: 'inherit',
-        environment: {},
+        environment: {...env},
         upsunStep: `${service}:${name}`,
       },
     }));
