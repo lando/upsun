@@ -5,8 +5,9 @@ Run [Upsun](https://upsun.com/) projects locally with [Lando](https://lando.dev)
 The plugin reads your Upsun configuration — Flex (`.upsun/config.yaml`) or
 Fixed (`.platform.app.yaml` + `.platform/`) — builds the matching Lando
 services, and gives your app the same runtime contract it gets on Upsun:
-`PLATFORM_*` variables, per-relationship `DATABASE_*`-style variables, hooks,
-mounts, the `upsun` CLI, and `lando pull` / `lando push`.
+`PLATFORM_*` variables, provisioned relationships, hooks and operations, real
+redirects, Mailpit, optional cron and tether modes, the `upsun` CLI, and
+`lando pull` / `lando push`.
 
 ## Install
 

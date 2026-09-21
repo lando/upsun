@@ -1,12 +1,23 @@
 ## v1.0.0-alpha.1 - Unreleased
 
-* Rewrote the runtime: Upsun configuration is translated onto Lando's own service plugins (php, node, python, ruby, go, mariadb, mysql, postgres, redis, memcached, mongo, solr, elasticsearch, varnish) and official images for opensearch, valkey, rabbitmq, kafka, influxdb, chrome-headless, gotenberg and clickhouse. The Platform.sh image runtime (privileged containers, fake RPC agent, OPEN protocol, `docker.registry.platform.sh`) is gone.
-* Upsun Flex (`.upsun/*.yaml`) is supported alongside Upsun Fixed (`.platform*`); mixed repositories are rejected. All relationship forms, `source.root` multi-app, composable images (primary runtime), mounts, hooks, crons, workers and `.environment` are handled.
-* Full `PLATFORM_*` runtime contract plus per-relationship service variables (`DATABASE_HOST`, `DATABASE_URL`, ...).
-* The `upsun` (Flex) or `platform` (Fixed) CLI is installed in the app container; `lando pull` / `lando push` use it with `UPSUN_CLI_TOKEN` / `PLATFORMSH_CLI_TOKEN`; `lando init --source upsun|platformsh` clones with `<cli> get`.
-* Generated tooling: language commands, relationship shells (`lando database`, ...), `lando cron <name>`, `lando upsun` / `lando platform`.
-* PHP nginx vhosts are rendered from `web.locations` (passthru, allow, scripts, rules, expires, headers); `build.flavor` runs `composer install` / `npm install` before the build hook; `lando drush` is added for Drupal projects; tooling and `lando ssh` source `.environment`; `jq` is installed for Upsun's `.environment` templates.
-* Examples `flex-php`, `flex-node` and `fixed-php`, all verified live; Leia runs on `3-stable` and `3-edge`. The Upsun Drupal 11 scaffold installs and runs end to end.
+* Translated Upsun Flex and Fixed configuration onto Lando service plugins and official upstream images.
+* Based local route hosts on the Lando app name, added real Traefik 301 redirect routes, and mapped `redirects.paths` including temporary and regexp redirects.
+* Parsed composable `stack.runtimes` / `stack.packages`, used the first declared runtime, and installed a secondary Node.js runtime beside PHP.
+* Provisioned MariaDB/MySQL and PostgreSQL schemas, endpoint users and privileges on every start, with `upsun` passwords for PostgreSQL users.
+* Added the non-PHP start wrapper and a `post-start` every-start runner for mounts, database initialization, deploy hooks, `pre_start`, `post_start`, `post_deploy` and tether setup.
+* Added PHP extension enable/disable handling, `variables.php` rendering, root `php.ini` linking, and `lando xdebug-on [mode]` / `lando xdebug-off`.
+* Added an nginx sidecar for non-PHP `web.locations`, including static sites without an app start command.
+* Installed declared Node.js, PHP, Python and Ruby dependencies before the build flavor and build hook.
+* Added `PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND`, `PLATFORM_POST_APP_COMMAND`, `TZ`, and `additional_hosts` support.
+* Added Mercure, Chroma and Qdrant service mappings plus Valkey relationship tooling.
+* Added Mailpit by default: service `mailpit`, SMTP on port 25, `PLATFORM_SMTP_HOST=mailpit`, PHP sendmail integration, and a `mail.<name>.<domain>` UI. `config.mail: false` disables it.
+* Added `lando operation <name>` for runtime operations.
+* Read `config.id` from the local project file and supported `lando init` from the current working directory.
+* Added the opt-in `<app>--cron` Supercronic sidecar through `config.crons`, while keeping `lando cron <name>`.
+* Added pull/push `--skip-db`, `--skip-files` and `-A/--app`, pull `--all-mounts`, and gzip-streamed pull database dumps.
+* Added tether mode through `config.tethered`, relationship tunnels, PHP-FPM environment reloads, and `lando tether --info|--close`.
+* Read supported version tables from installed Lando plugins, with generated tables as fallback.
+* Added `flex-multiapp`, `flex-composable` and `flex-static` examples alongside the existing Flex PHP, Flex Node.js and Fixed PHP examples.
 
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
 

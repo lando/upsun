@@ -45,7 +45,42 @@ lando database -e "select 1"    # mariadb / mysql
 lando database -c "select 1"    # postgresql (psql)
 lando redis ping
 lando mongodb                   # mongosh
+lando cache                     # valkey-cli for a Valkey relationship
 ```
+
+## Operations
+
+```bash
+lando operation <name>
+```
+
+Runs `operations.<name>.commands.start` once from the app directory with
+`.environment` sourced.
+
+## Xdebug
+
+PHP apps get runtime toggles for web requests:
+
+```bash
+lando xdebug-on          # mode defaults to debug
+lando xdebug-on develop,debug
+lando xdebug-off
+```
+
+The command reloads PHP-FPM. CLI PHP keeps the `XDEBUG_MODE` value from the
+Landofile/container environment.
+
+## Tethering
+
+Tethered apps add:
+
+```bash
+lando tether
+lando tether --info
+lando tether --close
+```
+
+See [Tethering](./tether.md).
 
 ## Crons
 
@@ -54,7 +89,8 @@ lando cron <name>
 ```
 
 Runs `crons.<name>.commands.start` once, from the app directory, with
-`.environment` sourced. Crons are never scheduled automatically.
+`.environment` sourced. With `config.crons: true`, the same jobs are also
+scheduled by Supercronic in the `<app>--cron` sidecar.
 
 ## Sync
 

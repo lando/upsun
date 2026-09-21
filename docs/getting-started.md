@@ -13,7 +13,7 @@ Add a Landofile next to your `.upsun/` (Flex) or `.platform/` (Fixed) directory:
 name: my-project
 recipe: upsun
 config:
-  id: PROJECT_ID   # optional, enables lando pull/push without --project
+  id: PROJECT_ID   # optional; otherwise read from .upsun/local/project.yaml
 ```
 
 ```bash
@@ -35,6 +35,17 @@ lando init --source platformsh --upsun-auth API_TOKEN --upsun-site my-project
 
 Omit the flags to be prompted. Create an API token in the Upsun Console under
 *My profile → API tokens*.
+
+If the project is already checked out and linked, initialize from the current
+directory:
+
+```bash
+lando init --source cwd
+```
+
+This reads `config.id` from `.upsun/local/project.yaml` (or
+`.platform/local/project.yaml` for Fixed). Run `upsun project:set-remote` or
+clone with `upsun get` first if that local project file does not exist.
 
 ## Pull data
 
@@ -72,8 +83,9 @@ routes:
     upstream: "app:http"
 ```
 
-`lando start` creates `app` (PHP 8.3 + nginx), `db` (MariaDB 11.4) and `redis`
-(Redis 7.2), serves `https://app.lndo.site`, and the app sees:
+`lando start` creates `app` (PHP 8.3 + nginx), `db` (MariaDB 11.4), `redis`
+(Redis 7.2) and `mailpit`. It serves `https://my-project.lndo.site` and the
+Mailpit UI at `http://mail.my-project.lndo.site`. The app sees:
 
 ```bash
 $ lando exec app -- env | grep -E '^(PLATFORM_APPLICATION_NAME|DATABASE_URL|REDIS_URL)='
@@ -81,6 +93,9 @@ DATABASE_URL=mysql://upsun:upsun@db:3306/main
 PLATFORM_APPLICATION_NAME=app
 REDIS_URL=redis://redis:6379
 ```
+
+PostgreSQL relationships use the same predictable credentials, for example
+`pgsql://upsun:upsun@db:5432/main`.
 
 Tooling is generated from the config: `lando php`, `lando composer`,
 `lando database` (MariaDB shell), `lando redis`, `lando upsun`, `lando pull`,

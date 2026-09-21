@@ -11,17 +11,22 @@ Upsun's production images are not publicly published (the old
 `docker.registry.platform.sh` registry froze in 2024 and is amd64-only), so
 services run on Lando's own images. Consequences:
 
-- PHP extensions and system packages differ from production. Use
-  `config.overrides` or `config.build` to add what you need.
+- PHP extensions and system packages differ from production. Requested PHP
+  extensions use `install-php-extensions`; `blackfire`, `newrelic`,
+  `sourceguardian` and `ioncube` are skipped with a warning.
 - `size`, `disk`, `resources` and `container_profile` are ignored.
-- PostgreSQL uses the `postgres` superuser with an empty password.
+- MariaDB and PostgreSQL endpoint users are created with password `upsun` on
+  every start. The endpoint name is the username; the default is `upsun`.
 
 ## Emulation limits
 
-- Crons are not scheduled; run them with `lando cron <name>`.
+- Crons always run on demand with `lando cron <name>`. Set `config.crons: true`
+  to schedule them in `<app>--cron`; jobs run as the container user.
 - `workers` run as extra services from the same image.
-- Redirect routes are served by their upstream app instead of redirected.
-- Composable images run only their primary runtime.
+- Redirect routes and `redirects.paths` are real Traefik redirects. Redirect
+  routes are permanent 301s; a path can request 302.
+- Composable images use the first declared runtime. A secondary Node.js runtime
+  beside PHP is installed in the PHP container; other secondary runtimes warn.
 - `java`, `dotnet`, `elixir`, `rust`, `lisp` apps and `vault-kms` services are
   not created.
 - Versions Lando does not ship fall back to the nearest lower minor.
@@ -29,7 +34,22 @@ services run on Lando's own images. Consequences:
 ## Proxy
 
 Lando's proxy needs ports `80` and `443`. If they are taken, URLs move to
-`:8888`/`:8443` or the proxy fails to start; the containers still work.
+fallback ports such as `:8888`/`:8443`, or the proxy fails to start; the
+containers still work. Host-level app, redirect and Mailpit URLs carry the
+fallback port when Lando moves the proxy.
+
+## Lifecycle configuration
+
+Lando lock-gates `config.run` steps, so they run once per rebuild. Put work that
+must run on every start in `hooks.deploy` or `hooks.post_deploy`; the plugin runs
+those through its `post-start` runner every time.
+
+## Tethering
+
+Tethering adds remote latency and depends on the remote environment being
+available. No local relationship services or local database copies are created,
+and `lando pull` skips databases. Remote workers are not connected; the tether
+uses the selected application's relationship payload.
 
 ## `PLATFORM_RELATIONSHIPS` and the CLI
 

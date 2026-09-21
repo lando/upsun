@@ -5,100 +5,162 @@ description: Configure the Lando Upsun recipe.
 
 # Configuration
 
-The recipe reads your Upsun configuration and turns it into Lando services,
-so most changes belong in `.upsun/config.yaml` (Flex) or `.platform*` (Fixed),
-followed by `lando rebuild`. The Landofile itself stays small:
+The recipe reads `.upsun/config.yaml` (Flex) or `.platform*` (Fixed) and turns
+it into Lando services. Change Upsun configuration first, then run
+`lando rebuild` when the service definitions change.
 
 ```yaml
+name: my-project
 recipe: upsun
 config:
-  id: null          # Upsun project id; set by lando init
-  app: null         # which application this Landofile belongs to (multi-app)
-  xdebug: false     # enable Xdebug on PHP apps
-  build: []         # extra build steps for the app container
-  run: []           # extra run steps for the app container
-  overrides: {}     # deep-merged onto the generated Lando services
+  id: null          # remote project ID; otherwise read from the local project file
+  app: null         # closest application override for a multi-app project
+  xdebug: false     # initial Xdebug setting for PHP services
+  build: []         # extra build steps on the closest app
+  run: []           # extra Lando run steps; lock-gated once per rebuild
+  overrides: {}     # deep-merged onto generated Lando services
+  mail: true        # add Mailpit unless the project defines a mailpit service
+  crons: false      # schedule crons in <app>--cron when true
+  tethered: false   # true for the git branch, or an environment ID string
 ```
 
-`recipe: platformsh` still works as a deprecated alias.
+`recipe: platformsh` remains as a deprecated alias.
 
 ## How configuration is read
 
-**Flex.** Every first-level `*.yaml` / `*.yml` in `.upsun/` is loaded and merged
-on the `applications`, `services` and `routes` keys. `.upsun/local/` is ignored.
+**Flex.** First-level YAML files in `.upsun/` are merged on `applications`,
+`services` and `routes`. `.upsun/local/` is not part of the application model.
 
-**Fixed.** `.platform.app.yaml` at the root (single app), or
-`.platform/applications.yaml`, or one `.platform.app.yaml` per app directory;
-plus `.platform/services.yaml` and `.platform/routes.yaml`. `!include` and
-`!archive` tags are supported.
+**Fixed.** The loader reads `.platform.app.yaml`,
+`.platform/applications.yaml`, per-app `.platform.app.yaml` files, and
+`.platform/services.yaml` / `.platform/routes.yaml`. `!include` and `!archive`
+are supported.
 
-A repository containing both `.upsun/` and `.platform/` is an error, as it is on
-Upsun.
+A repository containing both formats is an error.
 
 ## Applications
 
 | Upsun key | Local behaviour |
 |---|---|
-| `type` | Mapped to a Lando service; see [supported runtimes](./index.md#supported-runtimes). `composable:*` uses the primary runtime from `stack`. |
-| `source.root` | Each app's Lando service runs with `PLATFORM_APP_DIR=/app/<root>`. |
-| `relationships` | All three forms: `db:` (shorthand), `{service: db, endpoint: mysql}`, `"db:mysql"`. |
-| `mounts` | Created as directories under `/app` on every start. `source: service` mounts share the network-storage volume. |
-| `web.locations` | Rendered into the nginx vhost for PHP apps: `root`, `index`, `passthru`, `allow`, `scripts`, `expires`, `headers` and `rules`. The `/` location's `root` is the webroot. |
-| `web.commands.start` | Used as the container command for non-PHP runtimes (`PORT=8888`). |
-| `build.flavor` | `composer` (PHP default) runs `composer install`; `default` (Node default) runs `npm install`; `none` skips. |
-| `hooks.build` | Runs as a build step in the app container, after the build flavor. |
-| `hooks.deploy`, `hooks.post_deploy` | Run on every start, after mounts exist. |
-| `crons` | Not scheduled. Run on demand with `lando cron <name>`. |
-| `workers` | Extra services named `<app>--<worker>` running `commands.start`. |
-| `variables.env.*` | Exported as top-level variables. Other groups are in `PLATFORM_VARIABLES`. |
-| `dependencies.php.composer/composer` | Sets the Composer version. `dependencies.nodejs` are installed globally. |
-| `size`, `disk`, `resources`, `container_profile` | Ignored. |
+| `type` | Maps PHP, Node.js, Python, Ruby and Go to their Lando service plugins. |
+| `source.root` | Sets `PLATFORM_APP_DIR=/app/<root>` and the tooling directory. |
+| `relationships` | Supports shorthand, object and `service:endpoint` forms. |
+| `mounts` | Creates directories under `/app` on every start. No volumes are generated. |
+| `web.commands.pre_start` | Runs before the app command in the non-PHP start wrapper; PHP runs it in the every-start sequence. |
+| `web.commands.start` | Exposed as `PLATFORM_APP_COMMAND`; the non-PHP wrapper executes it on port `8888`. |
+| `web.commands.post_start` | Runs on every start through the post-start runner. |
+| `web.locations` | Renders nginx locations. Non-PHP apps get an nginx sidecar; apps without `web.commands.start` can be static sites. |
+| `hooks.build` | Runs after dependency and build-flavor installation during rebuild. |
+| `hooks.deploy`, `hooks.post_deploy` | Run on every start, after mounts and database initialization. |
+| `crons` | Always available through `lando cron <name>`; `config.crons: true` also schedules them in `<app>--cron`. |
+| `workers` | Adds `<app>--<worker>` services using `workers.<name>.commands.start`. |
+| `operations` | Adds `lando operation <name>` for `operations.<name>.commands.start`. |
+| `timezone` | Sets `TZ` on app, worker and cron containers. |
+| `additional_hosts` | Adds each `host:ip` pair to app, worker and cron containers. |
+| `runtime.extensions`, `runtime.disabled_extensions` | Installs or disables PHP extensions during rebuild. |
+| `dependencies.nodejs` | Installs global npm packages. |
+| `dependencies.php` | Installs global Composer packages; `composer/composer` selects Composer 2 when requested. |
+| `dependencies.python`, `python2`, `python3` | Installs user-level pip packages. |
+| `dependencies.ruby` | Installs gems. |
+| `variables.php` | Generates a PHP ini fragment. Nested keys use dot notation. |
+| `<source.root>/php.ini` | Linked to `/usr/local/etc/php/conf.d/zzz-upsun-app.ini` when present. |
+| `build.flavor` | PHP defaults to `composer install`; Node.js defaults to `npm install`; `none` skips the flavor step. |
 
-`.environment` in the app directory is sourced before hooks, crons and
-tooling run.
+`.environment` is sourced before hooks, crons, operations and generated tooling.
+
+### Composable applications
+
+The first entry in `stack.runtimes` is the primary local runtime:
+
+```yaml
+applications:
+  app:
+    type: composable:26.05
+    stack:
+      runtimes:
+        - "php@8.4":
+            extensions: [redis, xsl]
+            disabled_extensions: [imap]
+        - "nodejs@22"
+      packages: [jq]
+```
+
+PHP extension options merge into `runtime.extensions` and
+`runtime.disabled_extensions`. A secondary Node.js runtime after PHP is
+installed in the PHP container. Other secondary runtimes are ignored with a
+`composable-runtime-picked` warning.
 
 ### Multi-app projects
 
-Every application becomes a Lando service. Tooling (`lando php`, `lando pull`,
-...) targets the *closest* app: the one whose `source.root` contains the
-Landofile, or `config.app` if set.
+Every application becomes a Lando service. Tooling targets the closest app,
+based on the Landofile location and `source.root`, or the explicit `config.app`.
 
 ## Services
 
-Every service becomes a Lando service with the same name; see
-[supported services](./index.md#supported-services). Databases get fixed
-credentials that are reported through the relationship:
+See the [supported service table](./index.md#supported-services). MariaDB,
+MySQL and PostgreSQL schemas and endpoint users are provisioned idempotently on
+every start before deploy hooks run.
 
-| Type | user | password | database |
-|---|---|---|---|
-| `mariadb`, `mysql`, `oracle-mysql`, `mongodb` | `upsun` | `upsun` | `main` |
-| `postgresql` | `postgres` | *(empty)* | `main` |
+| Database setup | Local value |
+|---|---|
+| default schema/database | `main` |
+| default endpoint username | `upsun` |
+| configured endpoint username | the endpoint name |
+| MariaDB/MySQL password | `upsun` |
+| PostgreSQL password | `upsun` |
 
-`configuration.schemas` / `configuration.endpoints` on MariaDB and PostgreSQL
-select the database and endpoint name exposed on the relationship.
+`configuration.schemas`, `configuration.endpoints`, each endpoint's
+`default_schema` / `default_database`, and `admin`, `rw` or `ro` privileges are
+used to create the local databases and grants.
+
+`mercure`, `chroma` and `qdrant` use their official images. Mercure gets local
+publisher/subscriber keys, Qdrant exposes ports `6333` and `6334`, and Valkey
+relationships get a `valkey-cli` shell.
+
+### Mailpit
+
+Mailpit is enabled by default as service `mailpit`. SMTP listens on port `25`,
+apps receive `PLATFORM_SMTP_HOST=mailpit`, and the UI is available at
+`mail.<name>.<domain>`. PHP's generated `sendmail_path` sends to `mailpit:25`.
+
+Set `config.mail: false` to disable it. The generated service is also skipped
+when the Upsun configuration already defines a service named `mailpit`.
 
 ## Routes
 
-`{default}` resolves to `<app>.lndo.site` (`www.{default}` to
-`www.<app>.lndo.site`). Upstream routes are proxied to the app; redirect routes
-are served directly by the upstream they point to. Requests carry
-`X-Client-IP`, `X-Original-Route` and `X-Client-SSL` like Upsun's router.
+`{default}` and `{all}` resolve to the Landofile `name`, so a project named
+`my-project` gets `my-project.lndo.site`; `www.{default}` becomes
+`www.my-project.lndo.site`.
+
+Redirect routes are Traefik redirect middlewares. They issue real permanent
+301 responses, including `www.<name>.lndo.site` to the canonical route.
+`redirects.paths` also creates redirects on an upstream route. `code: 302`
+makes one temporary; `prefix`, `append_suffix` and `regexp` control matching and
+replacement.
+
+Requests carry `X-Client-IP`, `X-Original-Route` and, for HTTPS routes,
+`X-Client-SSL`.
 
 ## Environment
 
-The app container receives the full `PLATFORM_*` set and, for every
-relationship `name`, `NAME_HOST`, `NAME_PORT`, `NAME_USERNAME`,
-`NAME_PASSWORD`, `NAME_PATH`, `NAME_SCHEME`, `NAME_URL` and friends. The full
-list is in the [architecture notes](./architecture.md#environment-contract).
+Apps receive the `PLATFORM_*` runtime contract plus `NAME_HOST`, `NAME_PORT`,
+`NAME_USERNAME`, `NAME_PASSWORD`, `NAME_PATH`, `NAME_SCHEME`, `NAME_URL` and
+other fields for each relationship. Command fields set
+`PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND` and
+`PLATFORM_POST_APP_COMMAND`; `timezone` sets `TZ`.
 
-`PLATFORM_PROJECT` is `config.id` (or `lando`), `PLATFORM_BRANCH` is your git
-branch, `PLATFORM_ENVIRONMENT_TYPE` is `development`, `PLATFORM_VENDOR` is
-`upsun` (Flex) or `platformsh` (Fixed).
+`PLATFORM_PROJECT` uses `config.id`, then the ID from
+`.upsun/local/project.yaml` or `.platform/local/project.yaml`, then `lando`.
+`lando init --source cwd` writes the detected local ID into the generated
+Landofile configuration.
+
+Tethered apps start with `PLATFORM_RELATIONSHIPS=''`, no relationship-specific
+variables, `UPSUN_TETHERED=1` and `UPSUN_TETHER_ENVIRONMENT=<environment>`.
+See [Tethering](./tether.md).
 
 ## Overrides
 
-`config.overrides` is deep-merged onto the generated services, so you can add
-anything a Lando service accepts:
+`config.overrides` is deep-merged onto generated services:
 
 ```yaml
 config:
@@ -111,46 +173,43 @@ config:
 
 ## Warnings
 
-Lando prints a warning when it cannot emulate something exactly.
-
 ### composable-runtime-picked
 
-The app uses `type: composable:*` with several runtimes in `stack`. Only the
-primary one (php, nodejs, python, ruby, golang, in that order) runs locally.
+A composable application declares a secondary runtime that cannot be emulated.
+This warning is emitted only when a runtime is ignored; Node.js beside a PHP
+primary is installed instead.
+
+### php-extension-unsupported
+
+`blackfire`, `newrelic`, `sourceguardian` and `ioncube` cannot be installed by
+the local extension helper and are skipped.
 
 ### relationship-unknown-service
 
-A relationship points at a service that is not defined. The relationship is
-kept but has no local target.
+A relationship points at a service that is not defined.
 
 ### runtime-unsupported
 
-The app runtime has no Lando service (java, dotnet, elixir, rust, lisp). No
-container is created for it.
+The application runtime has no bundled Lando service plugin.
 
 ### service-unsupported
 
-The service type has no local equivalent (`vault-kms`). No container is
-created for it.
+The service type has no local mapping, so no container is created.
 
 ### version-fallback
 
-The exact version is not available locally; the nearest lower minor of the same
-major is used.
+The exact version is unavailable; the nearest lower version in the same major
+is used.
 
 ### version-unsupported
 
-No version of that major is available locally; the newest supported version is
+No version in that major is available; the newest installed-plugin version is
 used.
-
-### redirect-route
-
-A `redirect` route is served directly by its upstream app rather than
-redirected. Lando's proxy cannot issue redirects.
 
 ### varnish-vcl-ignored
 
-The Varnish `configuration.vcl` is in a form Lando cannot apply.
+The Varnish `configuration.vcl` value is in a form the local service cannot
+apply.
 
 ### recipe-deprecated-alias
 

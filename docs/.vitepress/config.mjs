@@ -8,8 +8,8 @@ const {name, version} = require('../../package.json');
 const landoPlugin = name.replace('@lando/', '');
 
 export default defineConfig({
-  title: 'Lando Upsun Plugin (Fixed)',
-  description: 'Lando plugin for Upsun Fixed. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.',
+  title: 'Lando Upsun Plugin',
+  description: 'Run Upsun Flex and Upsun Fixed projects locally with Lando.',
   landoDocs: 3,
   landoPlugin,
   version,
@@ -42,6 +42,7 @@ function sidebar() {
         {text: 'Configuration', link: '/config'},
         {text: 'Tooling', link: '/tooling'},
         {text: 'Syncing', link: '/sync'},
+        {text: 'Tethering', link: '/tether'},
         {text: 'Lifecycle', link: '/lifecycle'},
         {text: 'Caveats', link: '/caveats'},
       ],
