@@ -142,8 +142,10 @@ describe('Upsun tether script', () => {
     run(first).status.should.equal(0);
     const conf = fs.readFileSync(path.join(first.fpmDir, 'zzz-upsun-tether.conf'), 'utf8');
     conf.should.match(/^\[www\]/);
-    conf.should.include('env[DATABASE_PORT] = 30001');
-    conf.should.include('env[PLATFORM_RELATIONSHIPS] = ');
+    // php-fpm's ini parser chokes on unquoted `=` (base64 padding) and `:`/`@` (URLs); values are quoted
+    conf.should.include('env[DATABASE_PORT] = "30001"');
+    conf.should.match(/^env\[PLATFORM_RELATIONSHIPS\] = "[A-Za-z0-9+/=]+"$/m);
+    conf.should.include('env[DATABASE_URL] = "mysql://main:secret@127.0.0.1:30001/main"');
     fs.readFileSync(first.env.MOCK_KILL_LOG, 'utf8').should.include('-USR2 42');
 
     const second = makeContext({}, {fpm: false});

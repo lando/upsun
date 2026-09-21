@@ -104,13 +104,13 @@ write_fpm_conf() {
   [ -d "$UPSUN_FPM_POOL_DIR" ] || return 0
   {
     printf '[www]\n'
-    printf 'env[PLATFORM_RELATIONSHIPS] = %s\n' "$relationships_b64"
+    printf 'env[PLATFORM_RELATIONSHIPS] = "%s"\n' "$relationships_b64"
     jq -r '
       to_entries[] |
       .key as $name |
       .value[0] as $value |
       ($name | ascii_upcase | gsub("[^A-Z0-9]"; "_")) as $prefix |
-      def line($field; $data): "env[\($prefix)_\($field)] = \($data | tostring)";
+      def line($field; $data): "env[\($prefix)_\($field)] = \"\($data | tostring | gsub("\""; "\\\""))\"";
       ($value.scheme + "://" +
         (if $value.username == null then ""
          else ($value.username | tostring) +
