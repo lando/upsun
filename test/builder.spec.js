@@ -16,14 +16,18 @@ class MockRecipe {
   }
 }
 
+const confRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-builder-'));
+after(() => fs.rmSync(confRoot, {recursive: true, force: true}));
+
 const build = (root, extra = {}, landoConfig = {}) => {
   const app = {
     name: 'test',
     root,
-    _config: {domain: 'lndo.site', landoFile: '.lando.yml'},
+    project: 'testproject',
+    _config: {domain: 'lndo.site', landoFile: '.lando.yml', userConfRoot: confRoot},
     _lando: {
       cache: {get: () => extra.tokens || []},
-      config: {plugins: extra.plugins || []},
+      config: {plugins: extra.plugins || [], userConfRoot: confRoot},
     },
     config: {recipe: 'upsun', config: landoConfig},
     upsun: {branch: 'feature-x'},
@@ -42,8 +46,10 @@ describe('builders/upsun', () => {
     expect(Object.keys(services)[0]).to.equal('app');
     expect(services.app).to.include({via: 'nginx', webroot: 'web'});
     expect(services.app.type).to.match(/^php:8\./);
-    expect(services.app.config.vhosts).to.include('fastcgi_pass fpm:9000');
-    expect(services.app.config.php).to.include('memory_limit = 512M');
+    // Rendered files are written under the Lando config dir so `$` never reaches compose interpolation
+    expect(services.app.config.vhosts).to.match(/\/config\/upsun\/[^/]+\/app-vhost\.conf$/);
+    expect(fs.readFileSync(services.app.config.vhosts, 'utf8')).to.include('fastcgi_pass fpm:9000');
+    expect(fs.readFileSync(services.app.config.php, 'utf8')).to.include('memory_limit = 512M');
     expect(services.db.creds).to.deep.equal({user: 'upsun', password: 'upsun', database: 'main'});
 
     const env = services.app.overrides.environment;

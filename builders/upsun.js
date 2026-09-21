@@ -1,6 +1,7 @@
 'use strict';
 
 const _ = require('lodash');
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const {execSync} = require('child_process');
@@ -83,6 +84,19 @@ const getComposerPackages = dir => {
   ]);
 };
 
+// Rendered config (nginx vhost, php.ini) is written to files rather than passed inline: Lando embeds inline
+// service config in LANDO_INFO, where nginx `$` variables trip docker compose interpolation.
+const CONFIG_FILES = {vhosts: 'vhost.conf', php: 'php.ini'};
+const writeConfigFiles = (dir, service, config) => {
+  fs.mkdirSync(dir, {recursive: true});
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => {
+    if (typeof value !== 'string' || !value.includes('\n') || !CONFIG_FILES[key]) return [key, value];
+    const file = path.join(dir, `${service}-${CONFIG_FILES[key]}`);
+    fs.writeFileSync(file, value);
+    return [key, file];
+  }));
+};
+
 const loadModel = root => {
   try {
     return load(root);
@@ -155,6 +169,7 @@ module.exports = {
       const mail = landoConfig.mail !== false && !model.services.mailpit;
       const crons = landoConfig.crons === true;
       const versions = getSupportedVersions(_.get(app, '_lando.config.plugins', []));
+      const configDir = path.join(_.get(app, '_config.userConfRoot', os.tmpdir()), 'config', 'upsun', app.project);
       const warnings = [...model.warnings];
       const hostMap = {};
       const services = {};
@@ -190,6 +205,7 @@ module.exports = {
         for (const [serviceName, definition] of Object.entries(mapped.services)) {
           const role = definition.upsun.role;
           const def = _.omit(definition, ['upsun', 'build', 'build_as_root']);
+          if (def.config) def.config = writeConfigFiles(configDir, serviceName, def.config);
           if (role === 'nginx') {
             services[serviceName] = def;
             continue;
