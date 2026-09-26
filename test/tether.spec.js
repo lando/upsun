@@ -136,6 +136,45 @@ describe('Upsun tether script', () => {
     fs.readFileSync(path.join(context.tetherDir, 'environment'), 'utf8').trim().should.equal('feature');
   });
 
+  it('fails, closes tunnels and writes no env file when a tunnel never opens', () => {
+    const context = makeContext({UPSUN_TETHER_WAIT: '1'});
+    const result = run(context, ['open']);
+    result.status.should.equal(5, result.stderr);
+    result.stderr.should.include('RED Tunnel for cache did not open on port 30000');
+    fs.existsSync(context.env.UPSUN_TETHER_ENV_FILE).should.equal(false);
+    pidFiles(context.tetherDir).should.eql([]);
+    result.stdout.should.not.include('Tethered to');
+    const pids = fs.readFileSync(context.env.MOCK_TETHER_LOG, 'utf8').match(/^pid (\d+)$/gm);
+    pids.map(line => Number(line.slice(4))).every(waitForDead).should.equal(true);
+  });
+
+  it('opens and reports success when the tunnel port listens', () => {
+    const context = makeContext({UPSUN_TETHER_WAIT: '3', MOCK_TUNNEL_LISTEN: '1'});
+    const result = run(context, ['open']);
+    result.status.should.equal(0, result.stderr);
+    result.stdout.should.include('GREEN Tethered to feature: 2 relationship(s) tunnelled');
+    fs.existsSync(context.env.UPSUN_TETHER_ENV_FILE).should.equal(true);
+    pidFiles(context.tetherDir).should.have.members(['cache.pid', 'database.pid']);
+    readPids(context.tetherDir).every(isAlive).should.equal(true);
+  });
+
+  it('closes earlier listening tunnels when a later tunnel times out', () => {
+    const context = makeContext({
+      UPSUN_TETHER_WAIT: '3', MOCK_TUNNEL_LISTEN: '1', MOCK_TUNNEL_NO_LISTEN: 'database',
+    });
+    const result = run(context, ['open']);
+    result.status.should.equal(5, result.stderr);
+    result.stdout.should.include('Tunnel cache -> 127.0.0.1:30000');
+    result.stderr.should.include('RED Tunnel for database did not open on port 30001');
+    fs.existsSync(context.env.UPSUN_TETHER_ENV_FILE).should.equal(false);
+    fs.existsSync(path.join(context.fpmDir, 'zzz-upsun-tether.conf')).should.equal(false);
+    pidFiles(context.tetherDir).should.eql([]);
+    result.stdout.should.not.include('Tethered to');
+    const pids = fs.readFileSync(context.env.MOCK_TETHER_LOG, 'utf8').match(/^pid (\d+)$/gm);
+    pids.should.have.length(2);
+    pids.map(line => Number(line.slice(4))).every(waitForDead).should.equal(true);
+  });
+
   it('writes a php-fpm pool env file and reloads php-fpm when present', () => {
     const first = makeContext({MOCK_FPM_PID: '42', UPSUN_KILL: path.join(fixtures, 'mock-kill.sh')});
     first.env.MOCK_KILL_LOG = path.join(first.root, 'kill.log');

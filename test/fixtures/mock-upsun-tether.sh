@@ -23,6 +23,17 @@ case "$1" in
     base64 < "$MOCK_RELATIONSHIPS_FILE" | tr -d '\n'
     ;;
   tunnel:single)
+    printf 'pid %s\n' "$$" >> "$MOCK_TETHER_LOG"
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        -r) rel="$2"; shift ;;
+        --port) port="$2"; shift ;;
+      esac
+      shift
+    done
+    if [ "${MOCK_TUNNEL_LISTEN:-0}" = 1 ] && [ "${MOCK_TUNNEL_NO_LISTEN:-}" != "$rel" ]; then
+      exec node -e 'require("net").createServer(socket => socket.end()).listen(Number(process.argv[1]), "127.0.0.1")' "$port"
+    fi
     exec sleep "${MOCK_TUNNEL_SLEEP:-30}"
     ;;
 esac

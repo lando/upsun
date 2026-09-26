@@ -58,7 +58,7 @@ wait_for_tunnel() {
     sleep 1
     waited=$((waited + 1))
   done
-  lando_yellow "Tunnel for $rel did not open on port $port"
+  return 1
 }
 
 write_env_file() {
@@ -138,6 +138,7 @@ open_tether() {
   local relationships_b64
   local rel
   local port
+  local pid
   local index=0
   local -a rel_names
 
@@ -175,8 +176,13 @@ open_tether() {
     nohup "$UPSUN_CLI_BINARY" tunnel:single -p "$PLATFORM_PROJECT" -e "$PLATFORM_BRANCH" \
       -A "$PLATFORM_APPLICATION_NAME" -r "$rel" --port "$port" -g \
       > "$UPSUN_TETHER_DIR/$rel.log" 2>&1 &
-    printf '%s\n' "$!" > "$UPSUN_TETHER_DIR/$rel.pid"
-    wait_for_tunnel "$rel" "$port"
+    pid=$!
+    printf '%s\n' "$pid" > "$UPSUN_TETHER_DIR/$rel.pid"
+    if ! wait_for_tunnel "$rel" "$port" || ! "$UPSUN_KILL" -0 "$pid" 2>/dev/null; then
+      lando_red "Tunnel for $rel did not open on port $port"
+      close_tether 1
+      return 5
+    fi
     lando_pink "Tunnel $rel -> 127.0.0.1:$port"
     relationships=$(jq --arg rel "$rel" --argjson port "$port" \
       '.[$rel] |= map(.host="127.0.0.1" | .hostname="127.0.0.1" | .ip="127.0.0.1" | .port=$port)' \
