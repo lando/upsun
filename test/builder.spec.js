@@ -38,6 +38,30 @@ const build = (root, extra = {}, landoConfig = {}) => {
 };
 
 describe('builders/upsun', () => {
+  it('adds application targets to the hostMap before generating env', () => {
+    const {instance, app} = build(fixture('flex-app-rel'), {}, {app: 'api'});
+    expect(app.upsun.hostMap.app).to.deep.equal({host: 'app_nginx', port: 80, scheme: 'http'});
+    expect(app.upsun.hostMap.api).to.deep.equal({host: 'api', port: 8888, scheme: 'http'});
+    const env = instance.config.services.api.overrides.environment;
+    expect(env).to.include({BACKEND_HOST: 'app_nginx', BACKEND_PORT: '80', BACKEND_URL: 'http://app_nginx:80'});
+    const payload = JSON.parse(Buffer.from(env.PLATFORM_RELATIONSHIPS, 'base64').toString());
+    expect(payload.backend[0]).to.include({type: 'php:8.3', path: null});
+    expect(app.upsun.warnings.filter(warning => warning.code === 'relationship-unknown-service'))
+      .to.have.lengthOf(1);
+  });
+
+  it('warns relationship-unresolved and still builds', () => {
+    const {instance, app} = build(fixture('flex-app-rel'));
+    expect(app.upsun.warnings.filter(warning => warning.code === 'relationship-unresolved')).to.deep.equal([{
+      code: 'relationship-unresolved',
+      message: 'Relationship ghost of app points at nothere, which has no local service; it was skipped.',
+    }]);
+    expect(instance.config.services.app.overrides.environment).not.to.have.property('GHOST_HOST');
+    const tether = build(fixture('flex-app-rel'), {}, {tethered: true});
+    expect(tether.instance.config.services.api.overrides.environment.PLATFORM_RELATIONSHIPS).to.equal('');
+    expect(tether.app.upsun.warnings.some(warning => warning.code === 'relationship-unresolved')).to.equal(false);
+  });
+
   it('translates a Flex project into lando services, proxy and tooling', () => {
     const {instance, app} = build(fixture('flex-drupal'), {}, {id: 'abc123'});
     const {services, proxy, tooling} = instance.config;

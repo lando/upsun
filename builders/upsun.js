@@ -196,9 +196,29 @@ module.exports = {
       const appEntries = Object.entries(model.applications);
       const orderedApps = [appEntries.find(([appName]) => appName === closestApp),
         ...appEntries.filter(([appName]) => appName !== closestApp)];
-      for (const [appName, modelApp] of orderedApps) {
+      // Map once and collect every HTTP target before resolving cross-application relationships.
+      const mappedApps = new Map(orderedApps.map(([appName, modelApp]) => {
         const mapped = mapApplication(modelApp, model, {xdebug: options.xdebug, mail, crons, versions});
         warnings.push(...mapped.warnings);
+        const target = Object.values(mapped.services).find(definition => definition.upsun.role === 'app')?.upsun.proxy;
+        if (target) {
+          targets[appName] = target;
+          hostMap[appName] = {host: target.service, port: target.port, scheme: 'http'};
+        }
+        return [appName, mapped];
+      }));
+      for (const [appName, modelApp] of orderedApps) {
+        const mapped = mappedApps.get(appName);
+        if (!tethered) {
+          for (const [rel, {service, endpoint}] of Object.entries(modelApp.relationships)) {
+            if (hostMap[`${service}#${endpoint}`] ?? hostMap[service]) continue;
+            warnings.push({
+              code: 'relationship-unresolved',
+              message: `Relationship ${rel} of ${appName} points at ${service}, ` +
+                'which has no local service; it was skipped.',
+            });
+          }
+        }
         const env = getRuntimeEnv(model, appName, {
           domain, name, projectId, branch, hostMap, tethered, tetherEnvironment, smtpHost: mail ? 'mailpit' : '',
         });
@@ -222,7 +242,6 @@ module.exports = {
             def.build_internal.push(...options.build);
             if (options.run.length) def.run_internal = [...options.run];
           }
-          if (role === 'app') targets[appName] = definition.upsun.proxy;
           const commands = getStartCommands(model, appName, {
             role,
             worker: definition.upsun.worker,

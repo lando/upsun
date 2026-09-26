@@ -37,6 +37,7 @@ applications:
       root: api
     relationships:
       database: "db:admin"
+      backend: "app:http"
     web:
       commands:
         start: node server.js

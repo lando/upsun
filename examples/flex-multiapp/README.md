@@ -3,6 +3,9 @@
 This example verifies two Flex applications, a worker, shared MariaDB schemas,
 endpoint privileges, redirects and closest-app tooling with the `upsun` recipe.
 
+The API's `backend` relationship points to the PHP app's HTTP service. Use
+`BACKEND_HOST` and `BACKEND_PORT` to call it from inside the API container.
+
 ## Start up tests
 
 ```bash
@@ -27,6 +30,10 @@ curl -sk https://api.upsun-flex-multiapp.lndo.site/ | grep "db-ok"
 lando exec app -- curl -s http://app_nginx/ | grep "app=app"
 lando exec api -- curl -s http://localhost:8888/ | grep "app=api"
 lando exec api -- curl -s http://localhost:8888/ | grep "db-ok"
+
+# Should reach the PHP app through its backend relationship
+lando exec api -- env | grep '^BACKEND_HOST='
+lando exec api -- sh -c 'curl -fsS "http://$BACKEND_HOST:$BACKEND_PORT/"' | grep "app=app"
 
 # Should issue real redirects for redirect routes and redirects.paths
 curl -s -o /dev/null -w "%{http_code}" http://www.upsun-flex-multiapp.lndo.site/ | grep 301

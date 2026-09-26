@@ -15,6 +15,22 @@ const makeService = (name, type, version, configuration = {}, raw = {}) => ({
 const emptyModel = {applications: {}, services: {}, routes: {}};
 
 describe('bundled service mapping', () => {
+  it('leaves path null for endpoints without a default database and picks a container default schema', () => {
+    for (const [type, version, key] of [['mariadb', '11.4', 'schemas'], ['postgresql', '16', 'databases']]) {
+      for (const [configuration, expected] of [
+        [{[key]: ['main', 'legacy'], endpoints: {reader: {privileges: {legacy: 'ro'}}, other: {}}}, 'legacy'],
+        [{[key]: ['configured'], endpoints: {reader: {}}}, 'configured'],
+        [{endpoints: {reader: {}}}, 'main'],
+      ]) {
+        const mapped = mapService(makeService('db', type, version, configuration), emptyModel);
+        chai.expect(mapped.hostMap['db#reader'].path).to.equal(null);
+        mapped.services.db.creds.database.should.equal(expected);
+        const warnings = mapped.warnings.filter(warning => warning.code === 'relationship-path-null');
+        warnings.should.have.length(Object.keys(configuration.endpoints).length);
+      }
+    }
+  });
+
   const cases = [
     ['mariadb', '11.4', 'mariadb:11.4', 'mysql', 3306],
     ['mysql', '11.4', 'mariadb:11.4', 'mysql', 3306],

@@ -151,9 +151,40 @@ describe('environment contract', () => {
     expect(env.getRoutesPayload(model, 'app')).to.deep.equal({});
   });
 
-  it('fails clearly when a runtime relationship has no mapping but still allows builds', () => {
-    expect(() => env.getRelationshipsPayload(fixture(), 'app')).to.throw('Missing hostMap entry for service "db"');
+  it('skips relationships without a host entry instead of throwing', () => {
+    const model = fixture();
+    model.applications.app.relationships.ghost = {service: 'nothere', endpoint: 'http'};
+    expect(env.getRelationshipsPayload(model, 'app')).to.deep.equal({});
+    expect(env.getRelationshipsPayload(model, 'app', options())).to.deep.equal({database: [expectedRelationship]});
     expect(() => env.getBuildEnv(fixture(), 'app')).not.to.throw();
+  });
+
+  it('resolves relationships to another application via its proxy target', () => {
+    const model = fixture();
+    model.applications.api = {...model.applications.app, name: 'api', type: {runtime: 'nodejs', version: '22'},
+      relationships: {backend: {service: 'app', endpoint: 'http'}}};
+    const opts = {hostMap: {app: {host: 'app_nginx', port: 80, scheme: 'http'}}};
+    const entry = env.getRelationshipsPayload(model, 'api', opts).backend[0];
+    expect(entry).to.include({scheme: 'http', rel: 'http', host: 'app_nginx', hostname: 'app_nginx',
+      ip: 'app_nginx', port: 80, type: 'php:8.4', path: null});
+    expect(entry.query).to.deep.equal({});
+    expect(entry).not.to.have.any.keys('username', 'password');
+    expect(env.getServiceEnv(model, 'api', opts)).to.include({BACKEND_HOST: 'app_nginx', BACKEND_PORT: '80',
+      BACKEND_SCHEME: 'http', BACKEND_URL: 'http://app_nginx:80'});
+    model.applications.app.relationships = {frontend: {service: 'api', endpoint: 'http'}};
+    opts.hostMap.api = {host: 'api', port: 8888, scheme: 'http'};
+    expect(env.getRelationshipsPayload(model, 'app', opts).frontend[0])
+      .to.include({type: 'nodejs:22', host: 'api', port: 8888, path: null});
+    expect(env.getServiceEnv(model, 'app', opts).FRONTEND_URL).to.equal('http://api:8888');
+  });
+
+  it('omits PATH and URL suffix for null relationship paths', () => {
+    const opts = options();
+    opts.hostMap.db.path = null;
+    expect(env.getRelationshipsPayload(fixture(), 'app', opts).database[0].path).to.equal(null);
+    const result = env.getServiceEnv(fixture(), 'app', opts);
+    expect(result).not.to.have.any.keys('DATABASE_PATH', 'DATABASE_NAME');
+    expect(result.DATABASE_URL).to.equal('mysql://upsun:upsun@db:3306');
   });
 
   for (const [service, scheme, port, credentials] of [

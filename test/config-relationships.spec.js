@@ -6,6 +6,14 @@ chai.should();
 const relationships = require('../lib/config/relationships');
 
 describe('config relationships', () => {
+  it('does not warn when the target is another application', () => {
+    const parsed = relationships.parse({backend: 'app:http', object: {service: 'app'}, app: null}, {},
+      {app: {type: 'php:8.3'}});
+    parsed.warnings.should.eql([]);
+    parsed.relationships.should.eql({backend: {service: 'app', endpoint: 'http'},
+      object: {service: 'app', endpoint: 'http'}, app: {service: 'app', endpoint: 'http'}});
+  });
+
   const services = {
     db: {type: {service: 'mariadb', version: '11.4'}},
     redis: {type: {service: 'redis', version: '7.2'}},
