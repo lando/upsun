@@ -4,6 +4,86 @@ const {expect} = require('chai');
 const tooling = require('../lib/tooling');
 
 describe('lib/tooling', () => {
+  const databaseTooling = host => ({
+    'db-import <file>': {
+      service: ':host',
+      description: 'Imports a dump file into an Upsun database service',
+      cmd: '/helpers/sql-import.sh',
+      user: 'root',
+      options: {
+        'host': {description: 'The database service to use', default: host, alias: ['h']},
+        'no-wipe': {description: 'Do not destroy the existing database before an import', boolean: true},
+      },
+    },
+    'db-export [file]': {
+      service: ':host',
+      description: 'Exports database from an Upsun database service to a file',
+      cmd: '/helpers/sql-export.sh',
+      user: 'root',
+      options: {
+        host: {description: 'The database service to use', default: host, alias: ['h']},
+        stdout: {description: 'Dump database to stdout'},
+      },
+    },
+  });
+
+  it('adds db-import and db-export defaulting to the primary database relationship', () => {
+    for (const type of ['mariadb', 'mysql', 'oracle-mysql']) {
+      const model = {
+        applications: {
+          other: {relationships: {database: {service: 'first'}}},
+          app: {relationships: {
+            cache: {service: 'cache'},
+            missing: {service: 'missing'},
+            primary: {service: 'primary-db', endpoint: 'mysql'},
+            secondary: {service: 'first', endpoint: 'mysql'},
+          }},
+        },
+        services: {
+          'first': {type: {service: 'mariadb'}},
+          'cache': {type: {service: 'redis'}},
+          'primary-db': {type: {service: type}},
+        },
+      };
+      const services = {'first': {type: 'mariadb:11.4'}, 'cache': {type: 'redis:7.2'},
+        'primary-db': {type: `${type === 'oracle-mysql' ? 'mysql' : 'mariadb'}:11.4`}};
+      expect(tooling.getDatabaseTooling('app', model, services)).to.deep.equal(databaseTooling('primary-db'));
+    }
+  });
+
+  it('falls back to the first SQL service when the app has no database relationship', () => {
+    const model = {
+      applications: {app: {relationships: {cache: {service: 'cache'}}}},
+      services: {
+        cache: {type: {service: 'redis'}},
+        second: {type: {service: 'mysql'}},
+        first: {type: {service: 'postgresql'}},
+      },
+    };
+    const services = {first: {type: 'postgres:16'}, second: {type: 'mariadb:11.4'}, cache: {type: 'redis:7.2'}};
+    expect(tooling.getDatabaseTooling('app', model, services)).to.deep.equal(databaseTooling('second'));
+    model.applications.app = {};
+    expect(tooling.getDatabaseTooling('app', model, services)).to.deep.equal(databaseTooling('second'));
+  });
+
+  it('omits database tooling when no SQL service exists', () => {
+    const model = {
+      applications: {app: {relationships: {database: {service: 'cache'}}}},
+      services: {cache: {type: {service: 'redis'}}},
+    };
+    expect(tooling.getDatabaseTooling('app', model, {cache: {type: 'redis:7.2'}})).to.deep.equal({});
+    expect(tooling.getDatabaseTooling('app', {applications: {app: {}}, services: {}}, {})).to.deep.equal({});
+  });
+
+  it('defaults to a postgresql relationship service', () => {
+    const model = {
+      applications: {app: {relationships: {database: {service: 'pg', endpoint: 'postgresql'}}}},
+      services: {db: {type: {service: 'mariadb'}}, pg: {type: {service: 'postgresql'}}},
+    };
+    const services = {db: {type: 'mariadb:11.4'}, pg: {type: 'postgres:16'}};
+    expect(tooling.getDatabaseTooling('app', model, services)).to.deep.equal(databaseTooling('pg'));
+  });
+
   it('adds language tooling per runtime with a working dir', () => {
     expect(tooling.getLanguageTooling('app', 'php', {dir: '/app/x'})).to.deep.equal({
       php: {service: 'app', cmd: '/helpers/upsun-exec.sh php', dir: '/app/x'},
