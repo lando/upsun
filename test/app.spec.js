@@ -107,13 +107,15 @@ describe('app.js', () => {
     expect(runs).to.have.length(0);
   });
 
-  it('reports failures through addMessage instead of throwing', async () => {
+  it('passes start command failures to addMessage so lando exits nonzero', async () => {
     const {app, events, messages} = makeApp('upsun');
     app.engine.run = () => Promise.reject(new Error('failed'));
     appHook(app, {});
     await events['post-start']();
     expect(messages[0].title).to.equal('One of your Upsun start commands failed');
     expect(messages[0].command).to.equal('lando restart');
+    // Lando core turns a message error into lando.exitCode (error.code ?? 17)
+    expect(messages[0].error.message).to.equal('failed');
   });
 
   it('adds the tether environment to lando info', () => {
