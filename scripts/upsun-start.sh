@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 # shellcheck source=/dev/null
 . "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
@@ -26,6 +26,21 @@ if [ "${UPSUN_TETHERED:-}" = 1 ]; then
 fi
 
 cd "${PLATFORM_APP_DIR:-/app}"
+
+if [ "${UPSUN_PROVISION_WAIT:-0}" -gt 0 ]; then
+  provisioned_file="${UPSUN_PROVISIONED_FILE:-/dev/shm/upsun-provisioned}"
+  elapsed=0
+  if [ ! -f "$provisioned_file" ]; then
+    lando_pink "Waiting for database provisioning..."
+  fi
+  while [ ! -f "$provisioned_file" ] && [ "$elapsed" -lt "$UPSUN_PROVISION_WAIT" ]; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  if [ ! -f "$provisioned_file" ]; then
+    lando_yellow "Database provisioning not finished after ${UPSUN_PROVISION_WAIT}s; starting anyway"
+  fi
+fi
 
 if [ -n "${PLATFORM_PRE_APP_COMMAND:-}" ]; then
   lando_pink "Running pre_start"

@@ -80,7 +80,7 @@ describe('builders/upsun', () => {
     expect(tooling.drush.cmd).to.equal('/helpers/upsun-exec.sh /app/vendor/bin/drush');
     expect(tooling.upsun.env.UPSUN_CLI_NO_INTERACTION).to.equal('1');
     expect(app.upsun.startCommands.app.map(command => command.name))
-        .to.deep.equal(['mounts', 'db-init:db', 'deploy', 'pre_start']);
+        .to.deep.equal(['mounts', 'db-init:db', 'provisioned', 'pre_start', 'deploy']);
     expect(app.upsun).to.include({
       flavor: 'flex',
       closestApp: 'app',
@@ -150,7 +150,7 @@ describe('builders/upsun', () => {
     });
     expect(env).to.not.have.property('DATABASE_HOST');
     expect(app.upsun.startCommands.app.map(command => command.name))
-        .to.deep.equal(['mounts', 'tether', 'deploy', 'pre_start']);
+        .to.deep.equal(['mounts', 'tether', 'provisioned', 'pre_start', 'deploy']);
     expect(tooling.tether).to.include({service: 'app', user: 'root'});
     // the automatic tether step must carry the CLI contract the tooling has
     const tetherStep = app.upsun.startCommands.app.find(c => c.name === 'tether');

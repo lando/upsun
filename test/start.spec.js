@@ -137,6 +137,86 @@ describe('Upsun start wrapper', () => {
     }
   });
 
+  it('waits for the provisioning marker before pre_start', () => {
+    const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
+    const marker = path.join(appDir, 'provisioned');
+    const writer = spawn('bash', ['-c', 'sleep 1; touch "$1"', 'writer', marker], {stdio: 'ignore'});
+    try {
+      const result = spawnSync('bash', [start], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PLATFORM_APP_DIR: appDir,
+          PLATFORM_PRE_APP_COMMAND: 'test -f "$UPSUN_PROVISIONED_FILE" && echo provisioned-pre',
+          PLATFORM_APP_COMMAND: 'echo started',
+          UPSUN_ENV_HELPER: envHelper,
+          UPSUN_LOG_HELPER: logHelper,
+          UPSUN_PROVISION_WAIT: '3',
+          UPSUN_PROVISIONED_FILE: marker,
+        },
+      });
+
+      result.stdout.should.include('PINK Waiting for database provisioning...');
+      result.status.should.equal(0);
+      result.stdout.should.match(/Waiting for database provisioning\.\.\.[\s\S]*provisioned-pre\nstarted\n/);
+      result.stdout.split('Waiting for database provisioning...').should.have.length(2);
+      result.stdout.should.not.include('YELLOW');
+    } finally {
+      writer.kill();
+      fs.rmSync(appDir, {recursive: true, force: true});
+    }
+  });
+
+  it('warns and continues when the marker never appears', () => {
+    const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
+    try {
+      const result = spawnSync('bash', [start], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PLATFORM_APP_DIR: appDir,
+          PLATFORM_PRE_APP_COMMAND: 'echo pre',
+          PLATFORM_APP_COMMAND: 'echo started',
+          UPSUN_ENV_HELPER: envHelper,
+          UPSUN_LOG_HELPER: logHelper,
+          UPSUN_PROVISION_WAIT: '1',
+          UPSUN_PROVISIONED_FILE: path.join(appDir, 'missing'),
+        },
+      });
+
+      result.status.should.equal(0);
+      result.stdout.should.include('YELLOW Database provisioning not finished after 1s; starting anyway');
+      result.stdout.should.match(/starting anyway[\s\S]*pre\nstarted\n/);
+    } finally {
+      fs.rmSync(appDir, {recursive: true, force: true});
+    }
+  });
+
+  for (const wait of ['', '0']) {
+    it(`does not wait for provisioning when the wait is ${wait || 'unset'}`, () => {
+      const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
+      try {
+        const env = {
+          ...process.env,
+          PLATFORM_APP_DIR: appDir,
+          PLATFORM_PRE_APP_COMMAND: 'echo pre',
+          PLATFORM_APP_COMMAND: 'echo started',
+          UPSUN_ENV_HELPER: envHelper,
+          UPSUN_LOG_HELPER: logHelper,
+          UPSUN_PROVISION_WAIT: wait,
+          UPSUN_PROVISIONED_FILE: path.join(appDir, 'missing'),
+        };
+        if (!wait) delete env.UPSUN_PROVISION_WAIT;
+        const output = execFileSync('bash', [start], {encoding: 'utf8', env});
+
+        output.should.include('pre\nstarted\n');
+        output.should.not.include('provisioning');
+      } finally {
+        fs.rmSync(appDir, {recursive: true, force: true});
+      }
+    });
+  }
+
   it('sources the app .environment before the app command', () => {
     const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
     try {

@@ -43,9 +43,10 @@ describe('lib/hooks', () => {
     expect(result.map(command => command.name)).to.deep.equal([
       'mounts',
       'db-init:db',
-      'deploy',
+      'provisioned',
       'pre_start',
       'post_start',
+      'deploy',
       'post_deploy',
     ]);
     expect(result[1].cmd).to.equal(
@@ -55,7 +56,7 @@ describe('lib/hooks', () => {
   });
 
   it('runs pre_start through the wrapper for non-PHP apps', () => {
-    expect(getStartCommands(model, 'api').map(command => command.name)).to.deep.equal(['post_start']);
+    expect(getStartCommands(model, 'api').map(command => command.name)).to.deep.equal(['provisioned', 'post_start']);
   });
 
   it('inserts the tether step as root and skips database init when tethered', () => {
@@ -68,9 +69,10 @@ describe('lib/hooks', () => {
     expect(result.map(command => command.name)).to.deep.equal([
       'mounts',
       'tether',
-      'deploy',
+      'provisioned',
       'pre_start',
       'post_start',
+      'deploy',
       'post_deploy',
     ]);
     expect(result[1]).to.deep.equal({
@@ -79,6 +81,26 @@ describe('lib/hooks', () => {
       env: {UPSUN_CLI_BINARY: 'upsun', UPSUN_CLI_TOKEN: 'tok'},
       user: 'root',
     });
+  });
+
+  it('emits the provisioned marker after database init', () => {
+    const databases = ['db', 'other'].map(service => ({
+      service, host: service, dialect: 'mysql', statements: ['SELECT 1;'],
+    }));
+    for (const [opts, preceding] of [
+      [{databases}, ['mounts', 'db-init:db', 'db-init:other']],
+      [{}, ['mounts']],
+      [{tethered: true, databases}, ['mounts', 'tether']],
+    ]) {
+      const commands = getStartCommands(model, 'app', opts);
+      expect(commands.slice(0, preceding.length).map(command => command.name)).to.deep.equal(preceding);
+      expect(commands[preceding.length]).to.deep.equal({
+        name: 'provisioned',
+        cmd: 'touch "${UPSUN_PROVISIONED_FILE:-/dev/shm/upsun-provisioned}"',
+        user: 'app',
+      });
+      expect(commands.filter(command => command.name === 'provisioned')).to.have.length(1);
+    }
   });
 
   it('limits workers and cron sidecars to mount creation', () => {
@@ -107,7 +129,11 @@ describe('lib/hooks', () => {
       },
     }};
 
-    expect(getStartCommands(emptyModel, 'empty')).to.deep.equal([]);
+    expect(getStartCommands(emptyModel, 'empty')).to.deep.equal([{
+      name: 'provisioned',
+      cmd: 'touch "${UPSUN_PROVISIONED_FILE:-/dev/shm/upsun-provisioned}"',
+      user: 'app',
+    }]);
   });
 
   it('throws for unknown applications and returns fresh objects', () => {
