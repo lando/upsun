@@ -1,6 +1,8 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const chai = require('chai');
 chai.should();
 
@@ -14,6 +16,7 @@ describe('config model loading', () => {
     const root = fixture('flex-drupal');
     load(root).should.eql({
       flavor: 'flex',
+      layout: 'upsun',
       root,
       configFiles: [path.join(root, '.upsun', 'config.yaml')],
       applications: {
@@ -91,6 +94,7 @@ describe('config model loading', () => {
     const root = fixture('fixed-root');
     load(root).should.eql({
       flavor: 'fixed',
+      layout: 'platform',
       root,
       configFiles: [
         path.join(root, '.platform.app.yaml'),
@@ -148,6 +152,41 @@ describe('config model loading', () => {
     Object.keys(nested).should.eql(['api', 'frontend']);
     nested.api.sourceRoot.should.equal('api');
     nested.frontend.sourceRoot.should.equal('frontend');
+  });
+
+  it('loads .magento/services.yaml and routes.yaml', () => {
+    const model = load(fixture('fixed-magento'));
+    model.should.include({flavor: 'fixed', layout: 'magento'});
+    model.applications.mymagento.sourceRoot.should.equal('');
+    model.applications.mymagento.type.should.eql({runtime: 'php', version: '8.3'});
+    model.applications.mymagento.relationships.should.eql({
+      database: {service: 'mysql', endpoint: 'mysql'},
+      redis: {service: 'redis', endpoint: 'redis'},
+    });
+    model.services.mysql.type.should.eql({service: 'mariadb', version: '10.6'});
+    model.services.redis.type.should.eql({service: 'redis', version: '7.2'});
+    model.routes['http://{default}/'].should.include({type: 'upstream', upstream: 'mymagento:http'});
+  });
+
+  it('loads nested Magento apps without optional services and routes and ignores ece-tools config', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-load-'));
+    try {
+      fs.writeFileSync(path.join(root, '.magento.env.yaml'), 'not valid: [');
+      for (const name of ['api', 'frontend']) {
+        fs.mkdirSync(path.join(root, name));
+        fs.writeFileSync(path.join(root, name, '.magento.app.yaml'), `name: ${name}\ntype: php:8.3\n`);
+      }
+      const model = load(root);
+      model.should.include({flavor: 'fixed', layout: 'magento'});
+      Object.keys(model.applications).should.eql(['api', 'frontend']);
+      model.applications.api.sourceRoot.should.equal('api');
+      model.applications.frontend.sourceRoot.should.equal('frontend');
+      model.services.should.eql({});
+      model.routes.should.eql({});
+      model.configFiles.should.have.length(2);
+    } finally {
+      fs.rmSync(root, {recursive: true, force: true});
+    }
   });
 
   it('normalizes multi-app workers, redirects, and object relationships', () => {
