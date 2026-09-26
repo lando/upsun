@@ -166,6 +166,15 @@ describe('compose service mapping', () => {
   ];
 
   for (const [type, version, image, scheme, port, ports] of cases) {
+    it(`preserves the ${type} image startup command`, () => {
+      for (const requested of [version, '', '0']) {
+        const mapped = mapService(makeService('service', type, requested), emptyModel);
+        const command = mapped.services.service.services.command;
+        chai.expect(command, `${type} startup command`).to.be.an('array').that.is.not.empty;
+        command[0].should.match(/^(\/|docker-entrypoint\.sh$|tini$|dumb-init$|caddy$)/);
+      }
+    });
+
     it(`maps ${type} through the compose plugin`, () => {
       const mapped = mapService(makeService('service', type, version), emptyModel);
       mapped.services.service.type.should.equal('compose');
@@ -176,6 +185,26 @@ describe('compose service mapping', () => {
       mapped.warnings.should.eql([]);
     });
   }
+
+  it('preserves inspected entrypoints and arguments rather than only daemon arguments', () => {
+    const commands = {
+      'rabbitmq': ['docker-entrypoint.sh', 'rabbitmq-server'],
+      'opensearch': ['/usr/share/opensearch/opensearch-docker-entrypoint.sh', 'opensearch'],
+      'kafka': ['/__cacert_entrypoint.sh', '/etc/kafka/docker/run'],
+      'chrome-headless': ['/headless-shell/run.sh'],
+    };
+    for (const [type, command] of Object.entries(commands)) {
+      chai.expect(mapService(makeService('service', type, ''), emptyModel)
+          .services.service.services.command).to.eql(command);
+    }
+  });
+
+  it('uses the published unversioned RabbitMQ management tag', () => {
+    for (const version of ['', '0', 'latest']) {
+      mapService(makeService('queue', 'rabbitmq', version), emptyModel)
+          .services.queue.services.image.should.equal('rabbitmq:management');
+    }
+  });
 
   it('sets OpenSearch single-node security environment', () => {
     const environment = mapService(makeService('search', 'opensearch', '2.19'), emptyModel)
@@ -210,7 +239,7 @@ describe('compose service mapping', () => {
     kafka.environment.KAFKA_CONTROLLER_QUORUM_VOTERS.should.equal('1@events:9093');
     const chrome = mapService(makeService('chrome', 'chrome-headless', '132'), emptyModel)
         .services.chrome.services;
-    chrome.command.should.include('--remote-debugging-port=9222');
+    chrome.command.should.eql(['/headless-shell/run.sh']);
   });
 
   it('no longer returns volumes for network storage', () => {
