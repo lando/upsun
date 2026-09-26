@@ -114,6 +114,49 @@ describe('upsun_parse_sync_args', () => {
   it('defaults the app to PLATFORM_APPLICATION_NAME', () => {
     runHarness(['parse'], {PLATFORM_APPLICATION_NAME: 'app'}).should.match(/APP=app/);
   });
+
+  it('leaves relationships and mounts empty when -r / -m are omitted', () => {
+    const out = runHarness(['parse']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('keeps a literal none for -r / -m so the sync step can skip it', () => {
+    const out = runHarness(['parse', '-r', 'none', '-m', 'none']);
+    out.should.match(/^RELS=none$/m);
+    out.should.match(/^MOUNTS=none$/m);
+  });
+
+  it('skips empty -r / -m values', () => {
+    const out = runHarness(['parse', '-r', '', '-m', '']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('splits comma-separated -r / -m values', () => {
+    const out = runHarness(['parse', '-r', 'database,migrate', '-m', 'tmp,private']);
+    out.should.match(/^RELS=database migrate$/m);
+    out.should.match(/^MOUNTS=tmp private$/m);
+  });
+
+  it('parses -e / -p short forms and lets a later --environment win', () => {
+    const out = runHarness(['parse', '-p', 'proj9', '-e', 'feat', '--environment', 'other']);
+    out.should.match(/^PROJECT=proj9$/m);
+    out.should.match(/^BRANCH=other$/m);
+    out.should.match(/^ENV_EXPLICIT=1$/m);
+  });
+
+  it('ignores unknown flags and leftover positionals', () => {
+    const out = runHarness(['parse', 'positional', '-r', 'database', '--wat', '-m', 'tmp']);
+    out.should.match(/^RELS=database$/m);
+    out.should.match(/^MOUNTS=tmp$/m);
+  });
+
+  it('stops parsing after --', () => {
+    const out = runHarness(['parse', '-r', 'database', '--', '--mount=tmp']);
+    out.should.match(/^RELS=database$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
 });
 
 describe('sync source contracts', () => {
