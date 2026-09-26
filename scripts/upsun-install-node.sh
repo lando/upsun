@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 # shellcheck disable=SC1090
 . "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
@@ -40,6 +40,11 @@ trap 'rm -rf "$tmp"' EXIT
 
 lando_pink "Installing Node.js $version ($ARCH)..."
 "$CURL" -fsSL "$url" -o "$tmp/$archive"
+if ! "$CURL" -fsSL "$DIST/$version/SHASUMS256.txt" -o "$tmp/SHASUMS256.txt" ||
+  ! (cd "$tmp" && awk -v asset="$archive" 'NF == 2 && $2 == asset {print}' SHASUMS256.txt | sha256sum -c -); then
+  lando_red "Checksum verification failed for $archive"
+  exit 6
+fi
 mkdir -p "$PREFIX"
 tar -xzf "$tmp/$archive" --strip-components=1 -C "$PREFIX"
 lando_green "Installed Node.js $version"
