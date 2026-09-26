@@ -11,7 +11,7 @@ while [ "$#" -gt 0 ]; do
 done
 printf '%s\n' "$url" >> "$MOCK_CURL_LOG"
 if [[ "$url" == */latest ]]; then
-  printf 'https://github.com/platformsh/cli/releases/tag/v5.0.0'
+  printf 'https://github.com/upsun/cli/releases/tag/v5.0.0'
 elif [ -n "$output" ]; then
   cp "$MOCK_CURL_DIR/${url##*/}" "$output"
 else

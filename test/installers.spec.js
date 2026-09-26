@@ -76,7 +76,7 @@ describe('runtime installers', () => {
         }
         fs.readdirSync(path.join(root, 'tmp')).should.deep.equal([]);
         fs.readFileSync(path.join(root, 'curl.log'), 'utf8').should.contain(
-          'https://github.com/platformsh/cli/releases/download/v5.0.0/checksums.txt');
+          'https://github.com/upsun/cli/releases/download/v5.0.0/checksums.txt');
       });
     }
   }

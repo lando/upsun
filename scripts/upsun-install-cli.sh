@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Install the Upsun (or Upsun Fixed "platform") CLI from the platformsh/cli GitHub releases.
+# Install the Upsun (or Upsun Fixed "platform") CLI from the upsun/cli GitHub releases.
 #
 # Usage: upsun-install-cli.sh <upsun|platform> [version]
 #
-# Both binaries are published from https://github.com/platformsh/cli. We download the
+# Both binaries are published from https://github.com/upsun/cli. We download the
 # tarball directly rather than piping the vendor installer because we need a
 # deterministic, non-interactive install that works for any container user.
 
@@ -36,11 +36,11 @@ esac
 
 if [ -z "$VERSION" ]; then
   VERSION="$("$CURL" -fsSLI -o /dev/null -w '%{url_effective}' \
-    https://github.com/platformsh/cli/releases/latest | sed 's#.*/tag/v\{0,1\}##')"
+    https://github.com/upsun/cli/releases/latest | sed 's#.*/tag/v\{0,1\}##')"
 fi
 VERSION="${VERSION#v}"
 
-RELEASE="https://github.com/platformsh/cli/releases/download/v${VERSION}"
+RELEASE="https://github.com/upsun/cli/releases/download/v${VERSION}"
 ASSET="${BINARY}_${VERSION}_linux_${ARCH}.tar.gz"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
