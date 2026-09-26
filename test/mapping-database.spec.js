@@ -11,6 +11,16 @@ const makeService = (name, type, configuration = {}) => ({
 });
 
 describe('database initialization mapping', () => {
+  it('initializes PostgreSQL databases and privileges without endpoint defaults', () => {
+    const service = makeService('db', 'postgresql', {
+      databases: ['analytics'], endpoints: {reader: {privileges: {analytics: 'ro'}}},
+    });
+    const statements = getDatabaseInit(service).statements;
+    statements[0].should.include('CREATE DATABASE "analytics"');
+    statements.should.include('\\connect analytics');
+    statements.join('\n').should.not.include('undefined');
+  });
+
   it('creates the default schema and an admin upsun user for MariaDB', () => {
     const service = makeService('db', 'mariadb');
     getDatabaseInit(service).should.eql({
