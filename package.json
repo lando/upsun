@@ -24,8 +24,7 @@
     "include": [
       "builders/**/*.js",
       "inits/**/*.js",
-      "lib/**/*.js",
-      "utils/**/*.js"
+      "lib/**/*.js"
     ],
     "exclude": [
       "test/**"
@@ -34,7 +33,6 @@
     "all": true
   },
   "scripts": {
-    "coverage": "nyc report --reporter=text-lcov | coveralls",
     "docs:build": "LANDO_MVB_VERSION=$(git describe --tags --always --abbrev=1 --match=\"v[0-9].*\") vitepress build docs",
     "docs:dev": "LANDO_MVB_VERSION=$(git describe --tags --always --abbrev=1 --match=\"v[0-9].*\") vitepress dev docs",
     "docs:mvb": "npx mvb docs",
@@ -56,7 +54,6 @@
     "@lando/leia": "^0.6.4",
     "@lando/vitepress-theme-default-plus": "^1.2.0",
     "chai": "^4.3.4",
-    "command-line-test": "^1.0.10",
     "eslint": "^9.12.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-jsdoc": "^50.3.1",
