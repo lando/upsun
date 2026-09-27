@@ -1,6 +1,9 @@
 'use strict';
 
+const {RUNTIME_TYPES} = require('./lib/mapping/runtimes');
 const utils = require('./lib/utils');
+
+const APP_TYPES = new Set(Object.values(RUNTIME_TYPES));
 
 module.exports = lando => {
   lando.log.alsoSanitize('upsun-auth');
@@ -16,6 +19,9 @@ module.exports = lando => {
       data.options.service = app.primary;
       data.options.s = app.primary;
     }
+    // Only app containers carry the Upsun environment; the bash wrapper also fails on bash-less images (mailpit)
+    const target = (app.info || []).find(service => service.service === data.options.service);
+    if (target && !APP_TYPES.has(target.type)) return;
     const command = data.options.command || 'if ! type bash > /dev/null; then sh; else bash; fi';
     data.options.command = ['/helpers/upsun-exec.sh', '/bin/sh', '-c', command];
   });

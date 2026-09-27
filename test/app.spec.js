@@ -173,7 +173,9 @@ describe('index.js', () => {
     indexHook({log: {alsoSanitize: () => {}}, events: {on: (name, fn) => {
       handlers[name] = fn;
     }}});
-    const app = {recipe, primary: 'drupal', info: [{service: 'drupal'}, {service: 'db'}]};
+    const app = {recipe, primary: 'drupal', info: [
+      {service: 'drupal', type: 'php'}, {service: 'db', type: 'mariadb'}, {service: 'mailpit', type: 'mailpit'},
+    ]};
     const data = {options: {_app: app, service: 'appserver', ...options}};
     handlers['cli-ssh-run'](data);
     return data.options;
@@ -189,8 +191,13 @@ describe('index.js', () => {
     const options = run('upsun');
     expect(options.service).to.equal('drupal');
     expect(options.command[0]).to.equal('/helpers/upsun-exec.sh');
-    expect(run('upsun', {service: 'db', command: 'ls'}).command).to.deep.equal([
+    expect(run('upsun', {service: 'drupal', command: 'ls'}).command).to.deep.equal([
       '/helpers/upsun-exec.sh', '/bin/sh', '-c', 'ls',
     ]);
+  });
+
+  it('leaves ssh into non-app services unwrapped', () => {
+    expect(run('upsun', {service: 'db', command: 'ls'}).command).to.equal('ls');
+    expect(run('upsun', {service: 'mailpit'}).command).to.equal(undefined);
   });
 });
