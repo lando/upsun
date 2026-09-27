@@ -4,9 +4,15 @@ const _ = require('lodash');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
-const {execSync} = require('child_process');
 
-const {load} = require('../lib/config/index');
+const {
+  getBranch,
+  getClosestApp,
+  getComposerPackages,
+  getEnvFileKeys,
+  loadModel,
+} = require('../lib/workspace');
+const {getSupportedVersions} = require('../lib/mapping/versions');
 const {getRuntimeEnv} = require('../lib/env');
 const {mapApplication, mapService} = require('../lib/mapping/index');
 const {getDatabaseInit} = require('../lib/mapping/database');
@@ -21,81 +27,6 @@ const tokens = require('../lib/tokens');
 const tooling = require('../lib/tooling');
 const {unique} = require('../lib/warnings');
 
-const DOCS = 'https://docs.lando.dev/upsun/config.html';
-const VERSIONED_PLUGINS = new Set([
-  'php', 'node', 'python', 'ruby', 'go', 'mariadb', 'mysql', 'postgres', 'redis', 'memcached', 'mongo', 'solr',
-  'elasticsearch', 'varnish']);
-
-/**
- * Current git branch of the project, falling back to `main`.
- * @param {string} root Project root.
- * @returns {string} Branch name.
- */
-const getBranch = root => {
-  try {
-    return execSync('git symbolic-ref --short HEAD', {cwd: root, stdio: ['ignore', 'pipe', 'ignore']})
-        .toString().trim() || 'main';
-  } catch {
-    return 'main';
-  }
-};
-
-/**
- * Pick the model application the Landofile belongs to.
- * @param {object} model Normalized model.
- * @param {string} root Project root.
- * @param {string} landoDir Directory containing the Landofile.
- * @param {string} [explicit] App name from `config.app`.
- * @returns {string} App name.
- */
-const getClosestApp = (model, root, landoDir, explicit) => {
-  const names = Object.keys(model.applications);
-  if (explicit) {
-    if (!names.includes(explicit)) throw new Error(`config.app "${explicit}" is not one of: ${names.join(', ')}`);
-    return explicit;
-  }
-  if (names.length === 1) return names[0];
-  const rel = path.relative(root, landoDir).split(path.sep).join('/');
-  return _(names)
-      .filter(name => {
-        const src = model.applications[name].sourceRoot;
-        return src === '' || rel === src || rel.startsWith(`${src}/`);
-      })
-      .maxBy(name => model.applications[name].sourceRoot.length) || names[0];
-};
-
-// Package names an app's composer project pulls in (root requires + lockfile), for framework tooling
-const readJson = file => {
-  if (!fs.existsSync(file)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return null;
-  }
-};
-const getComposerPackages = dir => {
-  const json = readJson(path.join(dir, 'composer.json'));
-  const lock = readJson(path.join(dir, 'composer.lock'));
-  return new Set([
-    ...Object.keys(json?.require || {}),
-    ...Object.keys(json?.['require-dev'] || {}),
-    ...(lock?.packages || []).map(pkg => pkg.name),
-    ...(lock?.['packages-dev'] || []).map(pkg => pkg.name),
-  ]);
-};
-
-// Compose environment takes precedence over env_file, so leave user-provided keys to Compose.
-const getEnvFileKeys = (files = []) => files.flatMap(file => {
-  try {
-    return fs.readFileSync(file, 'utf8').split('\n').flatMap(line => {
-      const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
-      return match ? [match[1]] : [];
-    });
-  } catch {
-    return [];
-  }
-});
-
 // Rendered config (nginx vhost, php.ini) is written to files rather than passed inline: Lando embeds inline
 // service config in LANDO_INFO, where nginx `$` variables trip docker compose interpolation.
 const CONFIG_FILES = {vhosts: 'vhost.conf', php: 'php.ini'};
@@ -107,45 +38,6 @@ const writeConfigFiles = (dir, service, config) => {
     fs.writeFileSync(file, value);
     return [key, file];
   }));
-};
-
-const loadModel = root => {
-  try {
-    return load(root);
-  } catch (error) {
-    if (error.code === 'UPSUN_NO_CONFIG') {
-      throw new Error(`No Upsun configuration found in ${root}. Expected .upsun/config.yaml (Flex) ` +
-        `or .platform.app.yaml + .platform/ (Fixed). See ${DOCS}`);
-    }
-    if (error.code === 'UPSUN_MIXED_CONFIG') {
-      throw new Error(`Both .upsun/ and .platform/ configuration found in ${root}; Upsun projects use one or ` +
-        `the other. See ${DOCS}`);
-    }
-    throw error;
-  }
-};
-
-/**
- * Read supported versions from installed Lando service plugins.
- * @param {Array<{name: string, dir: string}>} plugins Installed plugin metadata.
- * @returns {object} Supported versions keyed by Lando service type.
- */
-const getSupportedVersions = (plugins = []) => {
-  const versions = {};
-  for (const plugin of plugins) {
-    const match = /^@lando\/(.+)$/.exec(plugin.name || '');
-    const type = match?.[1];
-    if (!VERSIONED_PLUGINS.has(type)) continue;
-    try {
-      const builder = require(path.join(plugin.dir, 'builders', `${type}.js`));
-      if (Array.isArray(builder?.config?.supported)) {
-        versions[type] = [...new Set([...builder.config.supported, ...(builder.config.legacy || [])])];
-      }
-    } catch (error) {
-      void error;
-    }
-  }
-  return versions;
 };
 
 module.exports = {
