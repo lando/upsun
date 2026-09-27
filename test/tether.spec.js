@@ -105,7 +105,10 @@ const cleanupAll = () => {
   }
 };
 
-describe('Upsun tether script', () => {
+describe('Upsun tether script', function() {
+  // Several cases wait for real tunnel listeners and UPSUN_TETHER_WAIT timeouts
+  this.timeout(20000); // eslint-disable-line no-invalid-this
+
   afterEach(cleanupAll);
 
   after(cleanupAll);
