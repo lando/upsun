@@ -2,9 +2,6 @@
 
 const utils = require('./lib/utils');
 
-/*
- * Lando-level hooks for the upsun plugin.
- */
 module.exports = lando => {
   lando.log.alsoSanitize('upsun-auth');
   lando.log.alsoSanitize('platformsh-auth');

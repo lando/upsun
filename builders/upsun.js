@@ -148,9 +148,6 @@ const getSupportedVersions = (plugins = []) => {
   return versions;
 };
 
-/*
- * The upsun recipe: translate Upsun configuration into Lando services, proxy and tooling.
- */
 module.exports = {
   name: 'upsun',
   parent: '_recipe',
@@ -164,8 +161,8 @@ module.exports = {
       const app = options._app;
       options = _.merge({}, config, _.omit(options, ['_app']), {_app: app});
       const root = options.root;
-      const landoDir = path.dirname(_.get(app, '_config.landoFile') ?
-        path.join(root, app._config.landoFile) : path.join(root, '.lando.yml'));
+      const landoDir = path.dirname(path.join(root,
+        _.get(app, '_config.landoFile') ? app._config.landoFile : '.lando.yml'));
       const landoConfig = _.get(app, 'config.config', {});
 
       const model = loadModel(root);
@@ -288,7 +285,6 @@ module.exports = {
       warnings.push(...proxied.warnings);
       const proxy = _.merge({}, proxied.proxy, mailProxy);
 
-      // Tooling for the closest app
       const closest = model.applications[closestApp];
       const closestDef = services[closestApp];
       const closestType = closestDef ? String(closestDef.type).split(':')[0] : undefined;
@@ -321,7 +317,6 @@ module.exports = {
       options.proxy = _.merge({}, proxy, options.proxy);
       options.tooling = _.merge({}, appTooling, options.tooling);
 
-      // Share with app.js / index.js
       app.upsun = {
         model, flavor, cli, closestApp, closestType, hostMap, branch, projectId, tethered, tetherEnvironment, mail,
         startCommands, warnings: unique(warnings),

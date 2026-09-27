@@ -7,13 +7,9 @@ const tokens = require('./lib/tokens');
 const utils = require('./lib/utils');
 const warnings = require('./lib/warnings');
 
-/*
- * App-level hooks for the upsun recipe.
- */
 const appHook = (app, lando) => {
   if (!utils.isUpsunRecipe(_.get(app, 'config.recipe'))) return;
 
-  // Use the Upsun project id as the app id when we have one
   app.id = _.get(app, 'config.config.id', app.id);
   app.log.verbose('identified an upsun app, id %s', app.id);
   app.log.alsoSanitize('upsun-auth');
@@ -82,7 +78,7 @@ const appHook = (app, lando) => {
  * @returns {object[]} Engine run commands.
  */
 function buildRunCommands(app) {
-  const meUser = service => (_.find(app.info || [], {service}) || {}).meUser || 'www-data';
+  const meUser = service => _.find(app.info || [], {service})?.meUser || 'www-data';
   return Object.entries(_.get(app, 'upsun.startCommands', {})).flatMap(([service, commands]) => {
     if (!app.containers?.[service]) return [];
     return commands.map(({name, cmd, user, env = {}}) => ({
