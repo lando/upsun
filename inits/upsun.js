@@ -1,7 +1,7 @@
 'use strict';
 
 const _ = require('lodash');
-const PlatformshApiClient = require('platformsh-client').default;
+const {getAccountInfo} = require('../lib/api');
 const cli = require('../lib/cli');
 const {readLocalProjectId} = require('../lib/project');
 const tokens = require('../lib/tokens');
@@ -41,8 +41,7 @@ const getProjects = (answers, lando, input = null) => {
   if (!_.isEmpty(cachedProjects)) {
     return lando.Promise.resolve(cachedProjects).filter(project => _.startsWith(project.name, input));
   }
-  const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(answers['upsun-auth'])});
-  return api.getAccountInfo()
+  return getAccountInfo(_.trim(answers['upsun-auth']))
       .then(me => {
         cachedProjects = _.map(me.projects, project => ({name: project.title, value: project.name}));
         return cachedProjects;
@@ -116,8 +115,7 @@ module.exports = {
       return [{
         name: 'get-project-id',
         func: (opts, lando) => {
-          const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(opts['upsun-auth'])});
-          return api.getAccountInfo().then(me => {
+          return getAccountInfo(_.trim(opts['upsun-auth'])).then(me => {
             const project = _.find(me.projects, {name: opts['upsun-site']});
             if (_.isEmpty(project)) throw Error(`${opts['upsun-site']} does not appear to be an Upsun project!`);
             opts['upsun-project-id'] = project.id;
@@ -148,8 +146,7 @@ module.exports = {
       return id ? {config: {id}} : {};
     }
     const vendor = cli.resolveCli(getFlavor(options)).vendor;
-    const api = new PlatformshApiClient({...cli.API_CONFIG, api_token: _.trim(options['upsun-auth'])});
-    return api.getAccountInfo().then(me => {
+    return getAccountInfo(_.trim(options['upsun-auth'])).then(me => {
       const project = _.find(me.projects, {name: options['upsun-site']});
       if (_.isEmpty(project)) throw Error(`${options['upsun-site']} does not appear to be an Upsun project!`);
 

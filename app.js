@@ -1,8 +1,7 @@
 'use strict';
 
 const _ = require('lodash');
-const PlatformshApiClient = require('platformsh-client').default;
-const {API_CONFIG} = require('./lib/cli');
+const {getAccountInfo} = require('./lib/api');
 const tokens = require('./lib/tokens');
 const utils = require('./lib/utils');
 const warnings = require('./lib/warnings');
@@ -80,8 +79,7 @@ const appHook = (app, lando) => {
     app.events.on(`post-${command}`, (config, answers = {}) => {
       if (!answers.auth) return;
       const vendor = _.get(app, 'upsun.cli.vendor', 'upsun');
-      const api = new PlatformshApiClient({...API_CONFIG, api_token: answers.auth});
-      return api.getAccountInfo().then(me => {
+      return getAccountInfo(answers.auth).then(me => {
         const cache = {token: answers.auth, email: me.mail, date: _.toInteger(_.now() / 1000)};
         tokens.writeTokens(lando, utils.sortTokens(tokens.readTokens(lando, vendor), [cache]), vendor);
         const metaData = lando.cache.get(`${app.name}.meta.cache`);
