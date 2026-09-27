@@ -74,7 +74,7 @@ describe('application mapping', () => {
       'composer global require phpunit/phpunit:^11',
       'pip install --user yq==3.4.3',
       'gem install rake',
-      'if [ -f composer.json ]; then composer install --no-interaction --no-progress --prefer-dist ' +
+      'if [ -f composer.json ]; then composer --no-ansi --no-interaction install --no-progress --prefer-dist ' +
         '--optimize-autoloader; fi',
       '/helpers/upsun-hook.sh build',
     ]);
