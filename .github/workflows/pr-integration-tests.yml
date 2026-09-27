@@ -16,6 +16,8 @@ jobs:
           - examples/flex-php
           - examples/flex-node
           - examples/fixed-php
+          - examples/fixed-magento
+          - examples/flex-services
           - examples/flex-multiapp
           - examples/flex-composable
           - examples/flex-static
