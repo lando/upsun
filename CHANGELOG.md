@@ -28,6 +28,7 @@
 * Let Landofile `env_file` values win over `variables.env` by omitting those keys from the promoted variables.
 * Added `config.domains` to expand `{all}` routes onto `<label>.<name>.<domain>` hosts, with paired redirects and `{default}` winning collisions.
 * Added `lando db-import` and `lando db-export` for SQL relationships.
+* Gave exact route hosts priority over wildcard routes such as `https://*.{default}/` in the Lando proxy.
 * Detected Adobe Commerce Cloud projects (`.magento.app.yaml`, `.magento/services.yaml`, `.magento/routes.yaml`), mirrored `PLATFORM_*` as `MAGENTO_CLOUD_*`, and replaced `pull`, `push` and `tether` with `magento-cloud` guidance.
 * Matched Upsun's composer build flavor command exactly (`composer --no-ansi --no-interaction install --no-progress --prefer-dist --optimize-autoloader`).
 * Started compose-backed services with their image entrypoint and command, fixing OpenSearch, RabbitMQ, Kafka, InfluxDB and similar services that never came up.

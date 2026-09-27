@@ -177,6 +177,10 @@ replacement.
 Requests carry `X-Client-IP`, `X-Original-Route` and, for HTTPS routes,
 `X-Client-SSL`.
 
+Wildcard routes such as `https://*.{default}/` match any subdomain, and exact
+hosts like `www.{default}` still win over them, as on Upsun. After upgrading
+the plugin, run `lando rebuild` once so existing apps pick up the ordering.
+
 ### Project domains
 
 `{all}` covers only the Lando host by default. List your project's domains in
