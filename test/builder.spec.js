@@ -250,7 +250,8 @@ describe('builders/upsun', () => {
     const tetherStep = app.upsun.startCommands.app.find(c => c.name === 'tether');
     expect(tetherStep.env).to.include({UPSUN_CLI_BINARY: 'upsun', UPSUN_CLI_TOKEN_VAR: 'UPSUN_CLI_TOKEN',
       UPSUN_CLI_CONTEXT: '1', PLATFORM_PROJECT: 'lando'});
-    expect(tetherStep.env).to.have.property('UPSUN_CLI_TOKEN');
+    // no cached token: the var must be absent, not the string "undefined" once Lando stringifies it
+    expect(tetherStep.env).to.not.have.property('UPSUN_CLI_TOKEN');
     expect(tooling).to.not.have.any.keys('database', 'redis');
     expect(app.upsun).to.include({tethered: true, tetherEnvironment: 'staging'});
   });

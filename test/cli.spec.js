@@ -61,6 +61,10 @@ describe('cli', () => {
     });
   });
 
+  it('omits the token variable when no token is cached', () => {
+    getCliEnv('flex', {}).should.not.have.property('UPSUN_CLI_TOKEN');
+  });
+
   it('installs each CLI via the shared release-download helper', () => {
     getInstallStep('flex').should.equal('/helpers/upsun-install-cli.sh upsun');
     getInstallStep('fixed').should.equal('/helpers/upsun-install-cli.sh platform');
