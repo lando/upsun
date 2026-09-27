@@ -1,55 +1,83 @@
-# Lando Upsun Plugin
+# Upsun Lando Plugin
 
-Run [Upsun](https://upsun.com/) projects locally with [Lando](https://lando.dev).
+This is the _official_ [Lando](https://lando.dev) plugin for [Upsun](https://upsun.com/) (formerly Platform.sh). When installed it...
 
-The plugin reads your Upsun configuration — Flex (`.upsun/config.yaml`) or
-Fixed (`.platform.app.yaml` + `.platform/`) — builds the matching Lando
-services, and gives your app the same runtime contract it gets on Upsun:
-`PLATFORM_*` variables, provisioned relationships, hooks and operations, real
-redirects, Mailpit, optional cron and tether modes, the `upsun` CLI, and
-`lando pull` / `lando push`.
+* Runs Upsun Flex (`.upsun/config.yaml`) and Upsun Fixed (`.platform.app.yaml` + `.platform/`) projects, including Adobe Commerce Cloud
+* Builds every application and service in your Upsun config, with the same `PLATFORM_*` variables and relationships your app gets on Upsun
+* Runs your mounts, hooks, workers and crons the way Upsun does
+* Serves your routes and redirects on local `*.lndo.site` URLs and catches outgoing mail with Mailpit
+* Pulls and pushes databases and files with `lando pull` and `lando push`, or tethers your app to a remote environment's services
+* Adds the Upsun CLI (`upsun`, or `platform` for Fixed projects), `lando db-import` / `lando db-export`, and Xdebug toggles
 
-## Install
+Of course, once you're running your Upsun project with Lando you can take advantage of [all the other awesome development features](https://docs.lando.dev) Lando provides.
 
-```bash
-lando plugin-add @lando/upsun
-```
+## Basic Usage
 
-## Use
+Add a Landofile next to your `.upsun/` or `.platform/` directory:
 
 ```yaml
-# .lando.yml, next to .upsun/ or .platform/
 name: my-project
 recipe: upsun
 ```
+
+Then start the app and grab your data:
 
 ```bash
 lando start
 lando pull
 ```
 
-Or clone from Upsun: `lando init --source upsun`.
+Starting from a project that only exists on Upsun? `lando init --source upsun` clones it and writes the Landofile for you.
 
-## Docs
+For more info you should check out the [docs](https://docs.lando.dev/upsun):
 
-* [Documentation](https://docs.lando.dev/upsun)
+* [Getting Started](https://docs.lando.dev/upsun/getting-started.html)
+* [Configuration](https://docs.lando.dev/upsun/config.html)
+* [Tooling](https://docs.lando.dev/upsun/tooling.html)
+* [Syncing](https://docs.lando.dev/upsun/sync.html)
+* [Tethering](https://docs.lando.dev/upsun/tether.html)
 * [Examples](https://github.com/lando/upsun/tree/main/examples)
-* [Architecture](./docs/architecture.md)
 
-## Examples
+## Installation
 
-`examples/` holds Leia-tested projects: `flex-php`, `flex-node`, `flex-static`,
-`flex-composable`, `flex-multiapp`, `flex-services`, `fixed-php` and
-`fixed-magento`.
+```bash
+lando plugin-add @lando/upsun
+```
+
+## Issues, Questions and Support
+
+If you have a question or would like some community support we recommend you [join us on Slack](https://launchpass.com/devwithlando).
+
+If you'd like to report a bug or submit a feature request then please [use the issue queue](https://github.com/lando/upsun/issues/new/choose) in this repo.
+
+## Changelog
+
+We try to log all changes big and small in both [THE CHANGELOG](https://github.com/lando/upsun/blob/main/CHANGELOG.md) and the [release notes](https://github.com/lando/upsun/releases).
 
 ## Development
 
+* Requires [Node 20+](https://nodejs.org/dist/latest-v20.x/)
+
 ```bash
+git clone https://github.com/lando/upsun.git && cd upsun
 npm install
-npm test
 ```
 
-## Support
+See [Development](https://docs.lando.dev/upsun/development.html) and [Architecture](https://docs.lando.dev/upsun/architecture.html) for how the plugin is put together.
 
-* [Issues](https://github.com/lando/upsun/issues/new)
-* [Slack](https://www.launchpass.com/devwithlando)
+## Testing
+
+```bash
+# Lint the code
+npm run lint
+
+# Lint and run the unit tests
+npm test
+
+# Run the Leia tests in examples/ (needs Docker)
+npm run test:leia
+```
+
+## Releasing
+
+Publish a GitHub release. The release workflow publishes it to npm, and prereleases go out under the `edge` tag.
