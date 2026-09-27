@@ -263,6 +263,11 @@ For a Landofile named `my-project`, `www.{default}` resolves to
 `https://api.upsun.com` and `https://auth.upsun.com`. Flex uses `upsun` /
 `UPSUN_CLI_TOKEN`; Fixed uses `platform` / `PLATFORMSH_CLI_TOKEN`.
 
+`lib/api.js#getAccountInfo` is the only direct API call. `lando init` and the
+token cache use it to exchange an API token at
+`POST https://auth.upsun.com/oauth2/token` and read `GET https://api.upsun.com/me`
+(email and project list), using Node's built-in `fetch`.
+
 Pull and push expose authentication, environment, project, relationship, mount,
 `--skip-db`, `--skip-files` and `-A/--app` options. Pull also exposes
 `--all-mounts`; push adds `--force`. Pull downloads gzip dumps and streams them

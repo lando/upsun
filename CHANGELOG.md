@@ -17,6 +17,7 @@
 * Added tether mode through `config.tethered` and `lando tether`, which connects your local app to a remote environment's services.
 * Read the project ID from the local Upsun project file and supported `lando init` from an existing checkout.
 * Installed the matching CLI (`upsun` with `UPSUN_CLI_TOKEN` for Flex, `platform` with `PLATFORMSH_CLI_TOKEN` for Fixed) and verified CLI, Node.js and Supercronic downloads against published checksums.
+* Dropped the `platformsh-client` dependency for a direct API call, so `lando init` now reports a bad API token instead of hanging, and updated `tar`, `js-yaml` and `lodash` to clear known security advisories.
 * Rewrote the docs and added Leia-tested examples for Flex, Fixed, multi-app, composable, static, services and Adobe Commerce projects.
 
 ## v0.10.0 - [March 8, 2024](https://github.com/lando/platformsh/releases/tag/v0.10.0)
