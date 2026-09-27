@@ -23,11 +23,9 @@ const normalizeInitOptions = answers => {
   return answers;
 };
 
-// Flavor implied by the init source the user picked
 const getFlavor = answers => answers.source === 'platformsh' ? 'fixed' : 'flex';
 const isRemoteSource = answers => ['upsun', 'platformsh'].includes(answers.source);
 
-// Token choices for the interactive list
 const getTokenChoices = cached => _(cached)
     .map(token => ({name: token.email, value: token.token}))
     .thru(list => list.concat([{name: 'add or refresh a token', value: 'more'}]))
@@ -38,7 +36,6 @@ const showTokenList = (answers, cached) => isRemoteSource(answers) &&
 const showTokenEntry = (answers, cached) => isRemoteSource(answers) && utils.isUpsunRecipe(answers.recipe) &&
   (_.isEmpty(cached) || answers['upsun-auth'] === 'more');
 
-// Project autocomplete via the API
 const getProjects = (answers, lando, input = null) => {
   normalizeInitOptions(answers);
   if (!_.isEmpty(cachedProjects)) {
