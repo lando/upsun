@@ -57,6 +57,12 @@ lando exec api -- ls -d /app/tmp-data
 lando npm -v
 lando database -c "select 1 as ok" | grep ok
 lando upsun --version | grep "Upsun CLI"
+
+# Should export and import the main database
+lando exec db -- env | grep '^POSTGRES_DB=main$'
+lando db-export dump.sql | grep 'Success .*dump.sql.gz was created!'
+lando db-import dump.sql.gz | grep 'Import complete!'
+rm -f dump.sql dump.sql.gz
 ```
 
 ## Destroy tests

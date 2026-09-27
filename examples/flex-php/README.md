@@ -66,6 +66,11 @@ lando database -e "select 1 as ok" | grep ok
 lando redis ping | grep PONG
 lando php -v | grep "PHP 8.3"
 
+# Should export and import the main database
+lando exec db -- env | grep '^MYSQL_DATABASE=main$'
+lando db-export dump.sql | grep 'Success .*dump.sql.gz was created!'
+lando db-import dump.sql.gz | grep 'Import complete!'
+
 # Should run crons on demand and schedule them in the cron sidecar
 lando cron hello | grep cron-ran
 lando exec app--cron -- cat /tmp/crontab | grep "upsun-cron.sh tick"
@@ -81,6 +86,7 @@ lando xdebug-on
 lando exec app -- curl -s http://app_nginx/ | grep "xdebug=debug"
 lando xdebug-off
 lando exec app -- curl -s http://app_nginx/ | grep "xdebug=off"
+rm -f dump.sql dump.sql.gz
 ```
 
 ## Destroy tests
