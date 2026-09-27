@@ -27,6 +27,16 @@ describe('lib/routes', () => {
     'http://{all}/': {type: 'redirect', to: 'https://{all}/'},
   }};
 
+  it('keeps relative redirects.paths targets on the expanded {all} host', () => {
+    const withPaths = {routes: {'https://{all}/': {type: 'upstream', upstream: 'app:http', primary: true,
+      redirects: {paths: {'/old': {to: '/new'}}}}}};
+    const {proxy} = getProxyConfig(withPaths, opts, targets);
+    const replacements = proxy.app_nginx
+        .filter(entry => entry.pathname === '/old')
+        .map(entry => [entry.hostname, entry.middlewares.find(m => m.key === 'redirectregex.replacement').value]);
+    expect(replacements).to.deep.equal(hosts.map(host => [host, `https://${host}/new$\${1}`]));
+  });
+
   it('expands {all} routes once per configured domain and pairs redirects', () => {
     const {proxy} = getProxyConfig(allRoutes, opts, targets);
     expect(proxy.app_nginx.map(entry => entry.hostname)).to.deep.equal([
