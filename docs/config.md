@@ -22,6 +22,7 @@ config:
   mail: true        # add Mailpit unless the project defines a mailpit service
   crons: false      # schedule crons in <app>--cron when true
   tethered: false   # true for the git branch, or an environment ID string
+  domains: []       # project domains that `{all}` routes should also answer on
 ```
 
 ## How configuration is read
@@ -35,6 +36,10 @@ config:
 are supported.
 
 A repository containing both formats is an error.
+
+**Adobe Commerce Cloud.** A project with `.magento.app.yaml`,
+`.magento/services.yaml` and `.magento/routes.yaml` loads as a Fixed layout.
+See [Adobe Commerce Cloud](#adobe-commerce-cloud).
 
 ## Applications
 
@@ -62,9 +67,33 @@ A repository containing both formats is an error.
 | `dependencies.ruby` | Installs gems. |
 | `variables.php` | Generates a PHP ini fragment. Nested keys use dot notation. |
 | `<source.root>/php.ini` | Linked to `/usr/local/etc/php/conf.d/zzz-upsun-app.ini` when present. |
-| `build.flavor` | PHP defaults to `composer install`; Node.js defaults to `npm install`; `none` skips the flavor step. |
+| `build.flavor` | PHP defaults to the Upsun composer flavor; Node.js defaults to `npm install`; `none` skips the flavor step. |
 
 `.environment` is sourced before hooks, crons, operations and generated tooling.
+
+### Build flavor
+
+PHP apps with a `composer.json` run the same command Upsun does:
+
+```bash
+composer --no-ansi --no-interaction install --no-progress --prefer-dist --optimize-autoloader
+```
+
+Set `build.flavor: none` and put your own install command in `hooks.build` when
+you need different flags.
+
+### Relationships to other applications
+
+A relationship whose target is another application in the same project
+resolves to that app's local HTTP service: `app_nginx:80` for PHP apps and apps
+with `web.locations`, otherwise `<app>:8888`. The payload uses `rel: http`,
+`scheme: http` and a null `path`, with no credentials.
+
+`<rel>.internal` hostnames are not emulated. Use the `<REL>_HOST` and
+`<REL>_PORT` variables or the `PLATFORM_RELATIONSHIPS` payload instead.
+
+A relationship pointing at a name that is neither a service nor an application
+is skipped with a `relationship-unresolved` warning; the app still starts.
 
 ### Composable applications
 
@@ -92,6 +121,8 @@ installed in the PHP container. Other secondary runtimes are ignored with a
 
 Every application becomes a Lando service. Tooling targets the closest app,
 based on the Landofile location and `source.root`, or the explicit `config.app`.
+When several apps share the same `source.root`, the first one in configuration
+order wins the tie. Set `config.app` to pick a different one.
 
 ## Services
 
@@ -111,6 +142,12 @@ every start before deploy hooks run.
 their `admin`, `rw` or `ro` privileges create users and grants.
 `default_schema` / `default_database` selects the connection path reported to
 that endpoint's relationship.
+
+An endpoint without `default_schema` / `default_database` gets a null `path`,
+as on Upsun: `<REL>_URL` has no database suffix, `<REL>_PATH` is not set, and a
+`relationship-path-null` warning is emitted. The database container's own
+default database is the first schema that endpoint has privileges on, or
+`main`. Pass the database name explicitly in that case.
 
 `mercure`, `chroma` and `qdrant` use their official images. Mercure gets local
 publisher/subscriber keys, Qdrant exposes ports `6333` and `6334`, and Valkey
@@ -140,6 +177,31 @@ replacement.
 Requests carry `X-Client-IP`, `X-Original-Route` and, for HTTPS routes,
 `X-Client-SSL`.
 
+### Project domains
+
+`{all}` covers only the Lando host by default. List your project's domains in
+`config.domains` to answer on a local alias for each one:
+
+```yaml
+name: my-project
+recipe: upsun
+config:
+  domains:
+    - example.com
+    - shop.example.org
+```
+
+Each domain becomes a label (lowercase, runs of anything other than `a-z0-9`
+collapse to `-`) in front of the Lando host, so `https://{all}/` now serves
+`my-project.lndo.site`, `example-com.my-project.lndo.site` and
+`shop-example-org.my-project.lndo.site`. `PLATFORM_ROUTES` lists every expanded
+URL and keeps the placeholder form in `original_url`.
+
+Redirects expand alongside their targets: `https://www.{all}/` redirecting to
+`https://{all}/` produces one paired redirect per host. `{default}` always
+resolves to the Lando host, and when an expanded `{all}` URL collides with a
+`{default}` route, the `{default}` route wins.
+
 ## Environment
 
 Apps receive the `PLATFORM_*` runtime contract plus `NAME_HOST`, `NAME_PORT`,
@@ -156,6 +218,46 @@ Landofile configuration.
 Tethered apps start with `PLATFORM_RELATIONSHIPS=''`, no relationship-specific
 variables, `UPSUN_TETHERED=1` and `UPSUN_TETHER_ENVIRONMENT=<environment>`.
 See [Tethering](./tether.md).
+
+### `env_file` and `variables.env`
+
+`variables.env` is promoted to plain container variables. Any key that also
+appears in a Landofile `env_file` is left out of that promotion, so the value
+from your env file wins:
+
+```yaml
+# .lando.yml
+name: my-project
+recipe: upsun
+env_file:
+  - .env.local
+```
+
+```yaml
+# .upsun/config.yaml
+applications:
+  app:
+    variables:
+      env:
+        APP_ENV: production
+        APP_DEBUG: "0"
+```
+
+With `APP_ENV=dev` in `.env.local`, the container sees `APP_ENV=dev` and
+`APP_DEBUG=0`. `PLATFORM_*` and relationship variables are always set by the
+recipe. Unreadable env files are ignored.
+
+## Adobe Commerce Cloud
+
+A project with `.magento.app.yaml`, `.magento/services.yaml` and
+`.magento/routes.yaml` is detected as a Fixed layout and mapped like any other
+Fixed project. Mixing it with `.upsun/` or `.platform*` files is an error.
+
+- Every `PLATFORM_*` variable is mirrored as `MAGENTO_CLOUD_*`
+  (`MAGENTO_CLOUD_RELATIONSHIPS`, `MAGENTO_CLOUD_ROUTES`, and so on).
+- `lando pull`, `lando push` and `lando tether` are not available; they exit 1
+  and point you at the `magento-cloud` CLI.
+- `.magento.env.yaml` is not read. Manage those settings in your app.
 
 ## Overrides
 
@@ -183,9 +285,19 @@ primary is installed instead.
 `blackfire`, `newrelic`, `sourceguardian` and `ioncube` cannot be installed by
 the local extension helper and are skipped.
 
+### relationship-path-null
+
+A database endpoint has no `default_schema` / `default_database`, so its
+relationship reports a null path and no `<REL>_PATH` variable.
+
 ### relationship-unknown-service
 
 A relationship points at a service that is not defined.
+
+### relationship-unresolved
+
+A relationship points at a name that has no local service or application. The
+relationship is skipped.
 
 ### runtime-unsupported
 

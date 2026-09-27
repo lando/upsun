@@ -18,6 +18,20 @@
 * Added tether mode through `config.tethered`, relationship tunnels, PHP-FPM environment reloads, and `lando tether --info|--close`.
 * Read supported version tables from installed Lando plugins, with generated tables as fallback.
 * Added `flex-multiapp`, `flex-composable` and `flex-static` examples alongside the existing Flex PHP, Flex Node.js and Fixed PHP examples.
+* Resolved relationships to other applications onto the target app's local HTTP service, and skipped unresolvable targets with a `relationship-unresolved` warning instead of failing.
+* Kept a null relationship path for endpoints without `default_schema` / `default_database`, omitted `<REL>_PATH`, and added the `relationship-path-null` warning.
+* Created every PostgreSQL database listed in `configuration.databases`.
+* Reordered the every-start runner to mounts, database initialization or tether, provisioned marker, `pre_start`, `post_start`, `deploy`, `post_deploy`, and made non-PHP apps with a SQL relationship wait for provisioning (`UPSUN_PROVISION_WAIT`, `/dev/shm/upsun-provisioned`).
+* Reported failed start commands as a warning while making `lando start` exit nonzero.
+* Failed the tether with exit 5, closed opened tunnels and wrote no environment file when a relationship tunnel never opens.
+* Verified installer downloads against published checksums (`upsun/cli` `checksums.txt`, Node.js `SHASUMS256.txt`, pinned Supercronic 0.2.49 SHA-1) and exit 6 on mismatch; installed the CLI from the maintained `upsun/cli` releases.
+* Let Landofile `env_file` values win over `variables.env` by omitting those keys from the promoted variables.
+* Added `config.domains` to expand `{all}` routes onto `<label>.<name>.<domain>` hosts, with paired redirects and `{default}` winning collisions.
+* Added `lando db-import` and `lando db-export` for SQL relationships.
+* Detected Adobe Commerce Cloud projects (`.magento.app.yaml`, `.magento/services.yaml`, `.magento/routes.yaml`), mirrored `PLATFORM_*` as `MAGENTO_CLOUD_*`, and replaced `pull`, `push` and `tether` with `magento-cloud` guidance.
+* Matched Upsun's composer build flavor command exactly (`composer --no-ansi --no-interaction install --no-progress --prefer-dist --optimize-autoloader`).
+* Started compose-backed services with their image entrypoint and command, fixing OpenSearch, RabbitMQ, Kafka, InfluxDB and similar services that never came up.
+* Added `fixed-magento` and `flex-services` examples.
 
 ## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
 

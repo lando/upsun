@@ -23,6 +23,11 @@ services run on Lando's own images. Consequences:
 - Crons always run on demand with `lando cron <name>`. Set `config.crons: true`
   to schedule them in `<app>--cron`; jobs run as the container user.
 - `workers` run as extra services from the same image.
+- Relationships to other applications resolve to the target app's local Lando
+  service (for example `app_nginx:80`). `<rel>.internal` hostnames are not
+  emulated; read `<REL>_HOST` / `<REL>_PORT` or `PLATFORM_RELATIONSHIPS`.
+- Database endpoints without `default_schema` / `default_database` report a
+  null path and no `<REL>_PATH`, exactly as Upsun does.
 - Redirect routes and `redirects.paths` are real Traefik redirects. Redirect
   routes are permanent 301s; a path can request 302.
 - Composable images use the first declared runtime. A secondary Node.js runtime

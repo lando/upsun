@@ -61,3 +61,10 @@ or branch `main`/`master`) is refused without `--force`.
 
 In tethered mode, both commands skip databases with a warning because those
 relationships already point at Upsun. Mount sync still runs.
+
+## Adobe Commerce Cloud
+
+`lando pull` and `lando push` are not available for `.magento.app.yaml`
+projects. They exit 1 with a message; use the `magento-cloud` CLI to move data.
+For a local dump, `lando db-import` and `lando db-export` still work. See
+[Tooling](./tooling.md#database-import-and-export).

@@ -36,6 +36,12 @@ Or clone from Upsun: `lando init --source upsun`.
 * [Examples](https://github.com/lando/upsun/tree/main/examples)
 * [Architecture](./docs/architecture.md)
 
+## Examples
+
+`examples/` holds Leia-tested projects: `flex-php`, `flex-node`, `flex-static`,
+`flex-composable`, `flex-multiapp`, `flex-services`, `fixed-php` and
+`fixed-magento`.
+
 ## Development
 
 ```bash

@@ -35,6 +35,11 @@ requests see the tunneled variables. Non-PHP apps use the start wrapper and wait
 up to 120 seconds for the environment file before starting without remote
 relationships.
 
+If a relationship tunnel does not open, the tether exits with code 5, closes any
+tunnels it already opened, and writes no environment file. Lando reports the
+failed start command as a warning; fix the cause and run `lando restart` or
+`lando tether`.
+
 Remote workers are not connected. The tether reads relationships for the
 selected application and does not attach to remote worker processes.
 

@@ -54,6 +54,10 @@ scripts/              helpers mounted at /helpers
   endpoint user is `upsun`.
 - Tooling and the SSH wrapper use `/helpers/upsun-exec.sh` to source the tether
   environment and application `.environment` file.
+- Lando's `compose` service type replaces the image `ENTRYPOINT` with its own
+  entrypoint and drops `CMD`, so every compose-backed service (OpenSearch,
+  RabbitMQ, Kafka, InfluxDB, Valkey and friends) is started with an explicit
+  `command` that reproduces the image entrypoint plus command.
 
 ## Model contract
 
@@ -62,6 +66,7 @@ scripts/              helpers mounted at /helpers
 ```js
 {
   flavor: 'flex' | 'fixed',
+  layout: 'upsun' | 'platform' | 'magento',
   root: '/absolute/project',
   configFiles: [],
   applications: {
@@ -110,7 +115,13 @@ extension options merge into `runtime.extensions` and
 secondary runtimes enter `data.ignored` on `composable-runtime-picked`.
 
 Relationships normalize shorthand, object and legacy string forms. Default
-endpoints include `mercure`, `chroma` and `qdrant` as `http`.
+endpoints include `mercure`, `chroma` and `qdrant` as `http`. A relationship
+may target another application; the builder resolves it to that app's local
+HTTP service through `hostMap` (`{host, port, scheme: 'http'}`).
+
+`layout` is `magento` when `.magento.app.yaml` plus `.magento/services.yaml`
+and `.magento/routes.yaml` are detected; mixing layouts throws
+`UPSUN_MIXED_CONFIG`.
 
 ## Environment contract
 
@@ -118,13 +129,20 @@ endpoints include `mercure`, `chroma` and `qdrant` as `http`.
 
 ```js
 {
-  domain, name, projectId, branch, treeId, entropy, environment,
-  smtpHost, vendor, hostMap, tethered, tetherEnvironment,
+  domain, domains, name, projectId, branch, treeId, entropy, environment,
+  smtpHost, vendor, hostMap, tethered, tetherEnvironment, omitVariables,
 }
 ```
 
 The local route host is `${name ?? 'lando'}.${domain ?? 'lndo.site'}`. The
-builder passes the Lando app name, not the Upsun application name.
+builder passes the Lando app name, not the Upsun application name. `domains`
+(`config.domains`) adds one `<label>.<name>.<domain>` host per entry;
+`lib/domains.js` owns the label rule and `{all}` expansion, and `{default}`
+routes win collisions with expanded `{all}` routes.
+
+`omitVariables` lists keys found in Landofile `env_file` entries. Those keys
+are dropped from the promoted `variables.env` so Compose's env file value is
+used; `PLATFORM_*` and relationship variables are unaffected.
 
 | Variable | Value |
 |---|---|
@@ -153,7 +171,12 @@ builder passes the Lando app name, not the Upsun application name.
 
 Each relationship also expands to string-valued `NAME_<FIELD>` variables,
 including `HOST`, `PORT`, `USERNAME`, `PASSWORD`, `PATH`, `SCHEME` and `URL`.
-Tethered mode omits these until `/tmp/upsun-tether.env` is sourced.
+When the endpoint path is null (no default schema/database, or an application
+target) `NAME_PATH` is omitted and `NAME_URL` carries no path suffix. Tethered
+mode omits these until `/tmp/upsun-tether.env` is sourced.
+
+For `layout: magento`, every `PLATFORM_<X>` variable is mirrored as
+`MAGENTO_CLOUD_<X>` with the same value.
 
 `getCliEnv()` sets the vendor token, no-interaction and update-check variables,
 `UPSUN_CLI_CONTEXT=1`, and blanks `PLATFORM_RELATIONSHIPS` /
@@ -201,19 +224,23 @@ and proxies the UI at `mail.<name>.<domain>`. PHP receives a generated
 | Order | Name | User | Condition |
 |---|---|---|---|
 | 1 | `mounts` | app | mounts exist |
-| 2 | `tether` | root | tethered mode |
-| 3 | `db-init:<service>` | app | local SQL service; closest app only |
-| 4 | `deploy` | app | `hooks.deploy` exists |
-| 5 | `pre_start` | app | PHP app with `web.commands.pre_start` |
-| 6 | `post_start` | app | `web.commands.post_start` exists |
+| 2 | `db-init:<service>` | app | local SQL service; closest app only; not tethered |
+| 2 | `tether` | root | tethered mode (replaces `db-init`) |
+| 3 | `provisioned` | app | always; touches `UPSUN_PROVISIONED_FILE` |
+| 4 | `pre_start` | app | PHP app with `web.commands.pre_start` |
+| 5 | `post_start` | app | `web.commands.post_start` exists |
+| 6 | `deploy` | app | `hooks.deploy` exists |
 | 7 | `post_deploy` | app | `hooks.post_deploy` exists |
 
 Workers and cron sidecars receive mount creation only. Non-PHP `pre_start` is
-handled by `/helpers/upsun-start.sh` before it executes the app command.
+handled by `/helpers/upsun-start.sh` before it executes the app command. The
+builder sets `UPSUN_PROVISION_WAIT=300` on non-PHP app services that have a
+`db-init` step, so the start wrapper blocks on the `provisioned` marker.
 
 `app.js` converts the arrays into `engine.run()` commands at `post-start`
 priority 101. App-user entries resolve to the service `meUser`; root entries stay
-root. A failure becomes a Lando warning with `lando restart` as the retry command.
+root. A failure becomes a Lando warning with `lando restart` as the retry
+command, and the error is passed through so `lando start` exits nonzero.
 
 ## Routes contract
 
@@ -241,6 +268,13 @@ Pull and push expose authentication, environment, project, relationship, mount,
 `--all-mounts`; push adds `--force`. Pull downloads gzip dumps and streams them
 into the local client. Tethered sync skips databases with a warning.
 
+`db-import <file>` / `db-export [file]` are generated from
+`lib/tooling.js#getDatabaseTooling` on Lando's `/helpers/sql-import.sh` and
+`sql-export.sh`, run with `service: ':host'` and default to the closest app's
+first SQL relationship service. They are skipped when tethered. For
+`layout: magento`, `pull`, `push` and `tether` are replaced with commands that
+exit 1 and point at `magento-cloud`.
+
 Tether tooling runs as root and receives the CLI environment. It opens remote
 relationship tunnels, while `UPSUN_CLI_CONTEXT=1` prevents recursive loading of
 the generated tether environment.
@@ -251,7 +285,7 @@ the generated tether environment.
 |---|---|---|
 | `upsun-env.sh` | sourced | `UPSUN_TETHER_ENV_FILE` (`/tmp/upsun-tether.env`), `UPSUN_CLI_CONTEXT` (skip the tether file when `1`), `PLATFORM_APP_DIR` |
 | `upsun-exec.sh` | command and arguments | sources `upsun-env.sh`, then `exec` |
-| `upsun-start.sh` | none | `UPSUN_ENV_HELPER`, `UPSUN_TETHERED`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_TETHER_TIMEOUT` (120), `PLATFORM_APP_DIR`, `PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND` |
+| `upsun-start.sh` | none | `UPSUN_ENV_HELPER`, `UPSUN_TETHERED`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_TETHER_TIMEOUT` (120), `UPSUN_PROVISION_WAIT` (0), `UPSUN_PROVISIONED_FILE` (`/dev/shm/upsun-provisioned`), `PLATFORM_APP_DIR`, `PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND` |
 | `upsun-hook.sh` | `build`, `deploy`, `post_deploy`, `pre_start`, `post_start` | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-operation.sh` | operation name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-cron.sh` | cron name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
@@ -259,16 +293,30 @@ the generated tether environment.
 | `upsun-php-extensions.sh` | `--enable a,b --disable c` | `UPSUN_PHP_BIN`, `UPSUN_PHP_EXT_INSTALLER`, `UPSUN_PHP_CONF_DIR` |
 | `upsun-xdebug.sh` | `on [mode]`, `off` | `UPSUN_PHP_CONF_DIR`, `UPSUN_FPM_POOL_DIR`, `UPSUN_PHP_EXT_ENABLE`, `UPSUN_PGREP`, `UPSUN_KILL` |
 | `upsun-db-init.sh` | host, `mysql`/`pgsql`, base64 SQL | `UPSUN_DB_WAIT` (60), `UPSUN_MYSQL_CLIENT`, `UPSUN_PSQL_CLIENT`; exits 4 on timeout |
-| `upsun-install-supercronic.sh` | none | `SUPERCRONIC_VERSION`, `UPSUN_CURL`, `UPSUN_INSTALL_DIR` |
-| `upsun-install-node.sh` | major version | `UPSUN_CURL`, `UPSUN_NODE_PREFIX`, `UPSUN_NODE_BIN`, `UPSUN_NODE_DIST` |
-| `upsun-install-cli.sh` | `upsun`/`platform`, optional version | `UPSUN_CLI_INSTALL_DIR` |
-| `upsun-tether.sh` | `open`, `--close`, `--info` | `UPSUN_CLI_BINARY`, `UPSUN_CLI_TOKEN_VAR`, `PLATFORM_PROJECT`, `PLATFORM_APPLICATION_NAME`, `UPSUN_TETHER_ENVIRONMENT`, `UPSUN_TETHER_DIR`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_FPM_POOL_DIR`, `UPSUN_TETHER_BASE_PORT` (30000), `UPSUN_TETHER_WAIT` (30) |
+| `upsun-install-supercronic.sh` | none | `SUPERCRONIC_VERSION` (0.2.49), `UPSUN_SUPERCRONIC_SHA1` (pinned per-arch SHA-1 override), `UPSUN_CURL`, `UPSUN_INSTALL_DIR`; exits 6 on checksum mismatch |
+| `upsun-install-node.sh` | major version | `UPSUN_CURL`, `UPSUN_NODE_PREFIX`, `UPSUN_NODE_BIN`, `UPSUN_NODE_DIST`; verifies against `SHASUMS256.txt`, exits 6 on mismatch |
+| `upsun-install-cli.sh` | `upsun`/`platform`, optional version | `UPSUN_CURL`, `UPSUN_CLI_INSTALL_DIR`; downloads from `upsun/cli` releases, verifies against `checksums.txt`, exits 6 on mismatch |
+| `upsun-tether.sh` | `open`, `--close`, `--info` | `UPSUN_CLI_BINARY`, `UPSUN_CLI_TOKEN_VAR`, `PLATFORM_PROJECT`, `PLATFORM_APPLICATION_NAME`, `UPSUN_TETHER_ENVIRONMENT`, `UPSUN_TETHER_DIR`, `UPSUN_TETHER_ENV_FILE`, `UPSUN_FPM_POOL_DIR`, `UPSUN_TETHER_BASE_PORT` (30000), `UPSUN_TETHER_WAIT` (30); exits 5 when a tunnel never opens, after closing opened tunnels and without writing the env file |
 | `upsun-pull.sh`, `upsun-push.sh` | sync flags, plus `--all-mounts`, `--skip-db`, `--skip-files`, `-A/--app` where supported | `UPSUN_TETHERED` skips databases; `PLATFORM_APPLICATION_NAME` defaults `-A` |
 | `upsun-sync-env.sh` | sourced | shared sync argument parsing, project binding and environment activation |
 
+Every installer honours `UPSUN_CURL` so tests can substitute a fake downloader.
+Nothing is installed when a checksum fails.
+
 Generated files include `/tmp/upsun-tether.env`, tunnel PID/log files under
-`/run/upsun-tether`, `/tmp/crontab`, PHP-FPM pool fragments for tether/Xdebug,
-and PHP ini fragments for app config, Xdebug and Mailpit.
+`/run/upsun-tether`, `/dev/shm/upsun-provisioned`, `/tmp/crontab`, PHP-FPM pool
+fragments for tether/Xdebug, and PHP ini fragments for app config, Xdebug and
+Mailpit.
+
+## Warnings
+
+`lib/warnings.js` maps codes to titles. Codes emitted by the model, mapping and
+builder: `composable-runtime-picked`, `php-extension-unsupported`,
+`relationship-unknown-service`, `relationship-unresolved` (target has no local
+service or application; skipped), `relationship-path-null` (endpoint without a
+default schema/database; null path, no `<REL>_PATH`), `runtime-unsupported`,
+`service-unsupported`, `version-fallback`, `version-unsupported`,
+`varnish-vcl-ignored` and `recipe-deprecated-alias`.
 
 ## Testing
 

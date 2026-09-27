@@ -48,6 +48,29 @@ lando mongodb                   # mongosh
 lando cache                     # valkey-cli for a Valkey relationship
 ```
 
+## Database import and export
+
+Projects with a MariaDB, MySQL or PostgreSQL service get the standard Lando
+helpers:
+
+```bash
+lando db-import dump.sql.gz
+lando db-import dump.sql --no-wipe     # keep existing tables
+lando db-export                        # <database>.<timestamp>.sql.gz in the current directory
+lando db-export --stdout > dump.sql
+lando db-export -h reports             # another database service
+```
+
+| Option | Meaning |
+|---|---|
+| `-h`, `--host` | Database service to use. Defaults to the service behind the closest app's first SQL relationship, or the first SQL service. |
+| `--no-wipe` | Import without dropping the existing database first. |
+| `--stdout` | Export to stdout instead of a file. |
+
+Both commands work on the service's default database: the first schema the
+default endpoint has privileges on, or `main`. They are not generated while
+tethered, because there is no local database.
+
 ## Operations
 
 ```bash
@@ -95,6 +118,9 @@ scheduled by Supercronic in the `<app>--cron` sidecar.
 ## Sync
 
 `lando pull` and `lando push` are documented in [Syncing](./sync.md).
+
+Adobe Commerce Cloud projects get `pull`, `push` and `tether` commands that only
+print a message and exit 1. Use the `magento-cloud` CLI for those workflows.
 
 ## SSH
 
