@@ -2,9 +2,7 @@
 set -e
 
 . "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
-#
 # Shared Upsun Flex and Fixed sync helpers for lando pull / lando push.
-#
 # The injected binary and token variable select the CLI for the detected project.
 #
 # Prefer waking the current git-branch (or --env) environment. Parent fallback
@@ -13,12 +11,10 @@ set -e
 UPSUN_CLI_BINARY="${UPSUN_CLI_BINARY:-platform}"
 UPSUN_CLI_TOKEN_VAR="${UPSUN_CLI_TOKEN_VAR:-PLATFORMSH_CLI_TOKEN}"
 
-# Run the Fixed CLI as-is (no implied -p).
 upsun_platform_raw() {
   "$UPSUN_CLI_BINARY" "$@"
 }
 
-# Run the Fixed CLI, adding -p when PLATFORM_PROJECT is set.
 upsun_platform() {
   if [ -n "${PLATFORM_PROJECT:-}" ]; then
     "$UPSUN_CLI_BINARY" "$@" -p "$PLATFORM_PROJECT"
@@ -122,9 +118,6 @@ upsun_parse_sync_args() {
         shift
         break
         ;;
-      -*|--*=)
-        shift
-        ;;
       *)
         shift
         ;;
@@ -148,7 +141,6 @@ upsun_bind_project() {
   upsun_platform_raw project:set-remote -y "$PLATFORM_PROJECT" >/dev/null 2>&1 || true
 }
 
-# True when $1 is in the active-environment list.
 upsun_env_is_active() {
   local branch="$1"
   upsun_platform env -I --pipe | grep -Fx "$branch" >/dev/null
@@ -162,7 +154,6 @@ upsun_env_status() {
     | tr -d '[:space:]'
 }
 
-# Wake a paused or inactive environment. Returns 0 on CLI success.
 upsun_try_wake_env() {
   local branch="$1"
   local status="$2"
