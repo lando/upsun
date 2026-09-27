@@ -326,6 +326,7 @@ describe('builders/upsun', () => {
     expect(() => build(fixture('no-config'))).to.throw(/No Upsun configuration found/);
     expect(() => build(fixture('mixed-config'))).to.throw(/Both \.upsun\/ and \.platform\//);
     expect(() => build(fixture('mixed-magento'))).to.throw(/Adobe Commerce \.magento/);
+    expect(() => build(fixture('no-apps'))).to.throw(/No applications defined/);
   });
 
   it('uses a specific title for unavailable PHP extensions', () => {
