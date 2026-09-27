@@ -137,7 +137,7 @@ upsun_bind_project() {
     return 0
   fi
   export PLATFORM_PROJECT
-  lando_pink "Using Fixed project $PLATFORM_PROJECT..."
+  lando_pink "Using project $PLATFORM_PROJECT..."
   upsun_platform_raw project:set-remote -y "$PLATFORM_PROJECT" >/dev/null 2>&1 || true
 }
 
@@ -159,11 +159,11 @@ upsun_try_wake_env() {
   local status="$2"
   case "$status" in
     paused)
-      lando_pink "Environment $branch is paused; resuming with platform environment:resume..."
+      lando_pink "Environment $branch is paused; resuming with $UPSUN_CLI_BINARY environment:resume..."
       upsun_platform environment:resume -e "$branch" -y
       ;;
     inactive)
-      lando_pink "Environment $branch is inactive; activating with platform environment:activate..."
+      lando_pink "Environment $branch is inactive; activating with $UPSUN_CLI_BINARY environment:activate..."
       upsun_platform environment:activate -e "$branch" -y
       ;;
     *)
