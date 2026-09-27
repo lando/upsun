@@ -47,6 +47,38 @@ const makeApp = recipe => {
 };
 
 describe('app.js', () => {
+  it('gives exact proxy hosts priority over wildcards on HTTP and HTTPS', () => {
+    const {app, events, priorities} = makeApp('upsun');
+    const compose = [];
+    app.add = data => compose.push(data);
+    app.ComposeService = class {
+      constructor(...args) {
+        this.data = args[2];
+      }
+    };
+    app.config.proxy = {
+      app_nginx: [{id: 'wild', hostname: '*.test.lndo.site', pathname: '/deep/path'}],
+      api: [
+        {id: 'exact', hostname: 'www.test.lndo.site', pathname: '/'},
+        {id: 'path', hostname: 'www.test.lndo.site', pathname: '/old'},
+      ],
+    };
+    appHook(app, {utils: {dumpComposeData: () => ['proxy-priorities.yml']}});
+    expect(events['pre-start'], 'proxy priority hook').to.be.a('function');
+    expect(priorities['pre-start']).to.be.greaterThan(1);
+    events['pre-start']();
+    const {services} = compose[0].data;
+    for (const suffix of ['', '-secured']) {
+      const priority = (service, id) =>
+        Number(services[service].labels[`traefik.http.routers.${id}${suffix}.priority`]);
+      expect(priority('api', 'exact')).to.be.greaterThan(priority('app_nginx', 'wild'));
+      expect(priority('api', 'path')).to.be.greaterThan(priority('api', 'exact'));
+    }
+    app.config.proxy.app_nginx = [];
+    events['pre-start']();
+    expect(compose).to.have.length(1);
+  });
+
   it('ignores non-upsun recipes', () => {
     const {app, events} = makeApp('lamp');
     appHook(app, {});

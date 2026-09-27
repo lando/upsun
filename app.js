@@ -33,6 +33,26 @@ const appHook = (app, lando) => {
     if (service) service.tethered = app.upsun.tetherEnvironment;
   });
 
+  // Core normalizes proxy entries at pre-start @1. Its wildcard HostRegexp is longer
+  // than an exact host rule, so Traefik's default rule-length priority picks the wildcard.
+  app.events.on('pre-start', 3, () => {
+    const routes = Object.entries(app.config.proxy || {}).flatMap(([service, entries]) =>
+      entries.filter(entry => entry.id).map(entry => ({...entry, service})));
+    if (!routes.some(route => route.hostname.includes('*'))) return;
+    routes.sort((a, b) => Number(!a.hostname.includes('*')) - Number(!b.hostname.includes('*')) ||
+      a.hostname.replace(/\*/g, '').length - b.hostname.replace(/\*/g, '').length ||
+      a.pathname.length - b.pathname.length);
+    const services = {};
+    routes.forEach((route, index) => {
+      const labels = (services[route.service] ||= {labels: {}}).labels;
+      for (const suffix of ['', '-secured']) {
+        labels[`traefik.http.routers.${route.id}${suffix}.priority`] = String(index + 1);
+      }
+    });
+    app.add(new app.ComposeService('upsun-proxy-priorities', {}, {services}));
+    app.compose = lando.utils.dumpComposeData(app.composeData, app._dir);
+  });
+
   app.events.on('post-start', 101, () => {
     const steps = module.exports.buildRunCommands(app);
     if (steps.length === 0) return;
