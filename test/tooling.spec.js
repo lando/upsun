@@ -116,6 +116,13 @@ describe('lib/tooling', () => {
     expect(result).to.not.have.property('search');
   });
 
+  it('omits the database from relationship shells when the endpoint path is null', () => {
+    const app = {relationships: {reports: {service: 'db', endpoint: 'reporter'}}};
+    const hostMap = {'db#reporter': {username: 'reporter', password: 'upsun', path: null}};
+    const result = tooling.getRelationshipTooling(app, {db: {type: 'mariadb:11.4'}}, hostMap);
+    expect(result.reports.cmd).to.equal('mysql -ureporter -pupsun');
+  });
+
   it('adds a valkey shell for compose services', () => {
     const app = {relationships: {cache: {service: 'cache', endpoint: 'valkey'}}};
     const services = {cache: {type: 'compose', services: {image: 'valkey/valkey:8'}}};
