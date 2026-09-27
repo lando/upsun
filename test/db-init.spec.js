@@ -36,7 +36,10 @@ const run = (args, root, bin, extraEnv = {}) => spawnSync('bash', [script, ...ar
   },
 });
 
-describe('database initialization helper', () => {
+describe('database initialization helper', function() {
+  // Cases wait on real sleeps and UPSUN_DB_WAIT timeouts
+  this.timeout(20000); // eslint-disable-line no-invalid-this
+
   afterEach(() => {
     while (roots.length > 0) fs.rmSync(roots.pop(), {recursive: true, force: true});
   });
