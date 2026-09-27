@@ -23,6 +23,7 @@ const build = (root, extra = {}, landoConfig = {}) => {
   const app = {
     name: 'test',
     root,
+    envFiles: extra.envFiles || [],
     project: 'testproject',
     _config: {domain: 'lndo.site', landoFile: '.lando.yml', userConfRoot: confRoot},
     _lando: {
@@ -38,6 +39,75 @@ const build = (root, extra = {}, landoConfig = {}) => {
 };
 
 describe('builders/upsun', () => {
+  it('picks the first configured application when several share the Landofile root', () => {
+    const {instance, app} = build(fixture('flex-shared-root'));
+    expect(app.upsun.closestApp).to.equal('zebra');
+    expect(Object.keys(instance.config.services)[0]).to.equal('zebra');
+    expect(instance.config.tooling.node.service).to.equal('zebra');
+  });
+
+  it('wires database tooling to the closest app\'s database', () => {
+    const {instance} = build(fixture('flex-drupal'));
+    for (const [key, script] of [['db-import <file>', 'sql-import'], ['db-export [file]', 'sql-export']]) {
+      expect(instance.config.tooling[key]).to.include({service: ':host', cmd: `/helpers/${script}.sh`});
+      expect(instance.config.tooling[key].options.host.default).to.equal('db');
+    }
+  });
+
+  it('omits database tooling when tethered', () => {
+    const {instance} = build(fixture('flex-drupal'), {}, {tethered: true});
+    expect(instance.config.tooling).not.to.have.any.keys('db-import <file>', 'db-export [file]');
+  });
+
+  it('replaces pull, push and tether with unsupported messages for magento projects', () => {
+    const {spawnSync} = require('child_process');
+    const {instance} = build(fixture('fixed-magento'));
+    for (const cmd of ['pull', 'push', 'tether']) {
+      const tool = instance.config.tooling[cmd];
+      expect(tool.description).to.include('not available for Adobe Commerce Cloud');
+      const result = spawnSync('sh', ['-c', tool.cmd], {encoding: 'utf8'});
+      expect(result.status).to.equal(1);
+      expect(result.stdout).to.equal('');
+      expect(result.stderr.trim()).to.equal(
+        `lando ${cmd} is not available for Adobe Commerce Cloud projects; use the magento-cloud CLI.`);
+    }
+  });
+
+  it('passes config.domains to routes and proxy', () => {
+    const {instance} = build(fixture('flex-envfile'), {}, {domains: ['Example.COM']});
+    expect(instance.config.proxy.app.map(entry => entry.hostname)).to.include('example-com.test.lndo.site');
+    const env = instance.config.services.app.overrides.environment;
+    expect(JSON.parse(Buffer.from(env.PLATFORM_ROUTES, 'base64').toString()))
+      .to.have.property('https://example-com.test.lndo.site/');
+    for (const domains of ['example.com', [42], null]) {
+      expect(() => build(fixture('flex-envfile'), {}, {domains}))
+        .to.throw('config.domains must be an array of strings');
+    }
+  });
+
+  it('reads env_file keys from the Lando app and drops them from promoted variables', () => {
+    const root = fixture('flex-envfile');
+    const {instance} = build(root, {envFiles: [path.join(root, '.env'), path.join(root, 'missing')]});
+    const env = instance.config.services.app.overrides.environment;
+    expect(env).not.to.have.property('FOO');
+    expect(env).to.include({BAR: 'from-app', PLATFORM_VENDOR: 'upsun'});
+  });
+
+  it('sets UPSUN_PROVISION_WAIT on non-PHP apps with database init', () => {
+    const {instance, app} = build(fixture('flex-full'), {}, {app: 'api', crons: true});
+    expect(app.upsun.startCommands.api.some(command => command.name.startsWith('db-init:'))).to.equal(true);
+    expect(instance.config.services.api.overrides.environment.UPSUN_PROVISION_WAIT).to.equal('300');
+    for (const [name, service] of Object.entries(instance.config.services)) {
+      if (name !== 'api') expect(service.overrides?.environment || {}).not.to.have.property('UPSUN_PROVISION_WAIT');
+    }
+    for (const [root, config] of [['flex-full', {app: 'api', tethered: true}],
+      ['flex-drupal', {}], ['flex-static', {}]]) {
+      for (const service of Object.values(build(fixture(root), {}, config).instance.config.services)) {
+        expect(service.overrides?.environment || {}).not.to.have.property('UPSUN_PROVISION_WAIT');
+      }
+    }
+  });
+
   it('adds application targets to the hostMap before generating env', () => {
     const {instance, app} = build(fixture('flex-app-rel'), {}, {app: 'api'});
     expect(app.upsun.hostMap.app).to.deep.equal({host: 'app_nginx', port: 80, scheme: 'http'});

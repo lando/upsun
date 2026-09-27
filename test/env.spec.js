@@ -56,6 +56,53 @@ const assertSorted = value => {
 };
 
 describe('environment contract', () => {
+  it('mirrors PLATFORM_* as MAGENTO_CLOUD_* for the magento layout', () => {
+    for (const layout of ['magento', 'platform', 'upsun']) {
+      const model = {...fixture(), layout};
+      for (const generate of [env.getRuntimeEnv, env.getBuildEnv]) {
+        const result = generate(model, 'app', options());
+        for (const [key, value] of Object.entries(result).filter(([key]) => key.startsWith('PLATFORM_'))) {
+          const alias = key.replace('PLATFORM_', 'MAGENTO_CLOUD_');
+          if (layout === 'magento') expect(result[alias], alias).to.equal(value);
+          else expect(result).not.to.have.property(alias);
+        }
+      }
+    }
+  });
+
+  it('keys PLATFORM_ROUTES by expanded local hosts and keeps original_url', () => {
+    const model = fixture();
+    model.routes = {
+      'https://{default}/': route({id: 'default'}),
+      'https://{all}/': route({id: 'all'}),
+      'http://www.{all}/': route({type: 'redirect', to: 'https://{all}/'}),
+    };
+    const result = decode(env.getRuntimeEnv(model, 'app', {domains: ['Example.COM']}).PLATFORM_ROUTES);
+    expect(result['https://example-com.lando.lndo.site/']).to.include({id: 'all', original_url: 'https://{all}/'});
+    expect(result['https://lando.lndo.site/'].id).to.equal('default');
+    expect(result['http://www.example-com.lando.lndo.site/'].to).to.equal('https://example-com.lando.lndo.site/');
+    expect(result['http://www.lando.lndo.site/'].to).to.equal('https://lando.lndo.site/');
+  });
+
+  it('treats {all} like {default} without domains', () => {
+    const model = fixture();
+    model.routes = {'https://{all}/': route()};
+    expect(env.getRoutesPayload(model, 'app')).to.have.all.keys('https://lando.lndo.site/');
+  });
+
+  it('omits promoted variables listed in env files', () => {
+    const model = fixture();
+    Object.assign(model.applications.app.variables.env,
+      {BAR: 'kept', PLATFORM_VENDOR: 'wrong', DATABASE_HOST: 'wrong'});
+    const opts = {...options(), omitVariables: ['GREETING', 'PLATFORM_VENDOR', 'DATABASE_HOST']};
+    for (const generate of [env.getRuntimeEnv, env.getBuildEnv]) {
+      const result = generate(model, 'app', opts);
+      expect(result).not.to.have.property('GREETING');
+      expect(result).to.include({BAR: 'kept', PLATFORM_VENDOR: 'upsun'});
+    }
+    expect(env.getRuntimeEnv(model, 'app', opts).DATABASE_HOST).to.equal('db');
+  });
+
   for (const flavor of ['flex', 'fixed']) {
     it(`emits every runtime variable with exact values for ${flavor}`, () => {
       const model = fixture(flavor);

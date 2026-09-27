@@ -84,6 +84,18 @@ const getComposerPackages = dir => {
   ]);
 };
 
+// Compose environment takes precedence over env_file, so leave user-provided keys to Compose.
+const getEnvFileKeys = (files = []) => files.flatMap(file => {
+  try {
+    return fs.readFileSync(file, 'utf8').split('\n').flatMap(line => {
+      const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+      return match ? [match[1]] : [];
+    });
+  } catch {
+    return [];
+  }
+});
+
 // Rendered config (nginx vhost, php.ini) is written to files rather than passed inline: Lando embeds inline
 // service config in LANDO_INFO, where nginx `$` variables trip docker compose interpolation.
 const CONFIG_FILES = {vhosts: 'vhost.conf', php: 'php.ini'};
@@ -163,7 +175,12 @@ module.exports = {
       const branch = _.get(app, 'upsun.branch') || getBranch(root);
       const projectId = landoConfig.id || readLocalProjectId(root, flavor) || 'lando';
       const domain = _.get(app, '_config.domain', 'lndo.site');
+      const domains = landoConfig.domains === undefined ? [] : landoConfig.domains;
+      if (!Array.isArray(domains) || domains.some(value => typeof value !== 'string')) {
+        throw new Error('config.domains must be an array of strings');
+      }
       const name = app.name;
+      const omitVariables = getEnvFileKeys(app.envFiles);
       const tethered = landoConfig.tethered === true || typeof landoConfig.tethered === 'string';
       const tetherEnvironment = typeof landoConfig.tethered === 'string' ? landoConfig.tethered : branch;
       const mail = landoConfig.mail !== false && !model.services.mailpit;
@@ -220,7 +237,8 @@ module.exports = {
           }
         }
         const env = getRuntimeEnv(model, appName, {
-          domain, name, projectId, branch, hostMap, tethered, tetherEnvironment, smtpHost: mail ? 'mailpit' : '',
+          domain, domains, name, projectId, branch, hostMap, tethered, tetherEnvironment, omitVariables,
+          smtpHost: mail ? 'mailpit' : '',
         });
         for (const [serviceName, definition] of Object.entries(mapped.services)) {
           const role = definition.upsun.role;
@@ -249,6 +267,10 @@ module.exports = {
             tethered,
             tetherEnv: {...cliEnv, UPSUN_CLI_BINARY: cli.binary, UPSUN_CLI_TOKEN_VAR: cli.tokenVar},
           });
+          if (!tethered && role === 'app' && modelApp.type.runtime !== 'php' &&
+            commands.some(command => command.name.startsWith('db-init:'))) {
+            def.overrides.environment.UPSUN_PROVISION_WAIT = '300';
+          }
           if (commands.length) startCommands[serviceName] = commands;
           mailFrom.push(serviceName);
           services[serviceName] = def;
@@ -262,7 +284,7 @@ module.exports = {
         mailProxy = mailpit.proxy;
       }
 
-      const proxied = getProxyConfig(model, {domain, name}, targets);
+      const proxied = getProxyConfig(model, {domain, domains, name}, targets);
       warnings.push(...proxied.warnings);
       const proxy = _.merge({}, proxied.proxy, mailProxy);
 
@@ -276,6 +298,7 @@ module.exports = {
         ...tooling.getLanguageTooling(closestApp, closestType, {dir}),
         ...tooling.getComposerTooling(closestApp, dir, getComposerPackages(path.join(root, closest.sourceRoot)), {dir}),
         ...tooling.getRelationshipTooling(closest, services, hostMap),
+        ...(!tethered ? tooling.getDatabaseTooling(closestApp, model, services) : {}),
         ...tooling.getCronTooling(closestApp, closest),
         ...tooling.getOperationTooling(closestApp, closest),
         ...(closestType === 'php' ? tooling.getXdebugTooling(closestApp) : {}),
@@ -289,6 +312,7 @@ module.exports = {
         },
         pull: getPullTask(model, closestApp, cliRef, cachedTokens),
         push: getPushTask(model, closestApp, cliRef, cachedTokens),
+        ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {}),
       } : {};
 
       // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service

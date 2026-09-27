@@ -1,0 +1,9 @@
+applications:
+  zebra:
+    type: nodejs:22
+    source:
+      root: .
+  alpha:
+    type: nodejs:22
+    source:
+      root: .
