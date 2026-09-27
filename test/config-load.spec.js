@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const {execFileSync} = require('child_process');
 const chai = require('chai');
 chai.should();
 
@@ -253,5 +254,20 @@ describe('config model loading', () => {
     result.text.should.equal('hello\n');
     result.binary.should.equal(Buffer.from('hello\n').toString('base64'));
     result.archive.should.be.a('string').and.not.equal('');
+  });
+
+  it('packs !archive directories as a base64 gzipped tarball', () => {
+    const root = fixture('yaml');
+    const result = new UpsunYaml(root).load(path.join(root, 'config.yaml'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-archive-'));
+    try {
+      const file = path.join(tmp, 'archive.tgz');
+      fs.writeFileSync(file, Buffer.from(result.archive, 'base64'));
+      const entries = execFileSync('tar', ['-tzf', file], {encoding: 'utf8'}).trim().split('\n');
+      entries.map(entry => entry.replace(/^\.\//, '')).filter(Boolean).sort()
+          .should.eql(['file.txt']);
+    } finally {
+      fs.rmSync(tmp, {recursive: true, force: true});
+    }
   });
 });
