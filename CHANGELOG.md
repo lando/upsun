@@ -1,47 +1,23 @@
-## v1.0.0-alpha.1 - Unreleased
+## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
-* Translated Upsun Flex and Fixed configuration onto Lando service plugins and official upstream images.
-* Based local route hosts on the Lando app name, added real Traefik 301 redirect routes, and mapped `redirects.paths` including temporary and regexp redirects.
-* Parsed composable `stack.runtimes` / `stack.packages`, used the first declared runtime, and installed a secondary Node.js runtime beside PHP.
-* Provisioned MariaDB/MySQL and PostgreSQL schemas, endpoint users and privileges on every start, with `upsun` passwords for PostgreSQL users.
-* Added the non-PHP start wrapper and a `post-start` every-start runner for mounts, database initialization, deploy hooks, `pre_start`, `post_start`, `post_deploy` and tether setup.
-* Added PHP extension enable/disable handling, `variables.php` rendering, root `php.ini` linking, and `lando xdebug-on [mode]` / `lando xdebug-off`.
-* Added an nginx sidecar for non-PHP `web.locations`, including static sites without an app start command.
-* Installed declared Node.js, PHP, Python and Ruby dependencies before the build flavor and build hook.
-* Added `PLATFORM_PRE_APP_COMMAND`, `PLATFORM_APP_COMMAND`, `PLATFORM_POST_APP_COMMAND`, `TZ`, and `additional_hosts` support.
-* Added Mercure, Chroma and Qdrant service mappings plus Valkey relationship tooling.
-* Added Mailpit by default: service `mailpit`, SMTP on port 25, `PLATFORM_SMTP_HOST=mailpit`, PHP sendmail integration, and a `mail.<name>.<domain>` UI. `config.mail: false` disables it.
-* Added `lando operation <name>` for runtime operations.
-* Read `config.id` from the local project file and supported `lando init` from the current working directory.
-* Added the opt-in `<app>--cron` Supercronic sidecar through `config.crons`, while keeping `lando cron <name>`.
-* Added pull/push `--skip-db`, `--skip-files` and `-A/--app`, pull `--all-mounts`, and gzip-streamed pull database dumps.
-* Added tether mode through `config.tethered`, relationship tunnels, PHP-FPM environment reloads, and `lando tether --info|--close`.
-* Read supported version tables from installed Lando plugins, with generated tables as fallback.
-* Added `flex-multiapp`, `flex-composable` and `flex-static` examples alongside the existing Flex PHP, Flex Node.js and Fixed PHP examples.
-* Resolved relationships to other applications onto the target app's local HTTP service, and skipped unresolvable targets with a `relationship-unresolved` warning instead of failing.
-* Kept a null relationship path for endpoints without `default_schema` / `default_database`, omitted `<REL>_PATH`, and added the `relationship-path-null` warning.
-* Created every PostgreSQL database listed in `configuration.databases`.
-* Reordered the every-start runner to mounts, database initialization or tether, provisioned marker, `pre_start`, `post_start`, `deploy`, `post_deploy`, and made non-PHP apps with a SQL relationship wait for provisioning (`UPSUN_PROVISION_WAIT`, `/dev/shm/upsun-provisioned`).
-* Reported failed start commands as a warning while making `lando start` exit nonzero.
-* Failed the tether with exit 5, closed opened tunnels and wrote no environment file when a relationship tunnel never opens.
-* Verified installer downloads against published checksums (`upsun/cli` `checksums.txt`, Node.js `SHASUMS256.txt`, pinned Supercronic 0.2.49 SHA-1) and exit 6 on mismatch; installed the CLI from the maintained `upsun/cli` releases.
-* Let Landofile `env_file` values win over `variables.env` by omitting those keys from the promoted variables.
-* Added `config.domains` to expand `{all}` routes onto `<label>.<name>.<domain>` hosts, with paired redirects and `{default}` winning collisions.
-* Added `lando db-import` and `lando db-export` for SQL relationships.
-* Gave exact route hosts priority over wildcard routes such as `https://*.{default}/` in the Lando proxy.
-* Detected Adobe Commerce Cloud projects (`.magento.app.yaml`, `.magento/services.yaml`, `.magento/routes.yaml`), mirrored `PLATFORM_*` as `MAGENTO_CLOUD_*`, and replaced `pull`, `push` and `tether` with `magento-cloud` guidance.
-* Matched Upsun's composer build flavor command exactly (`composer --no-ansi --no-interaction install --no-progress --prefer-dist --optimize-autoloader`).
-* Started compose-backed services with their image entrypoint and command, fixing OpenSearch, RabbitMQ, Kafka, InfluxDB and similar services that never came up.
-* Added `fixed-magento` and `flex-services` examples.
-
-## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
-
-* Rebrand package/recipe to `@lando/upsun` / `upsun` (deprecated `platformsh` alias).
-* Fixed-only: Flex (`.upsun/config.yaml`) is a hard error until Phase 3.
-* Token cache `upsun.tokens` with read-old-write-new from `platformsh.tokens`.
-* Keep `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `platformsh-client@0.1.230` (auth path, code).
-* OPEN / `PLATFORM_RELATIONSHIPS` runtime deferred until a live Docker proof.
-* Seed: lando/platformsh tip `9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0` (50 commits ahead of tag `v0.10.0`; seed `package.json` said `0.9.0`).
+* Renamed the plugin to `@lando/upsun` and the recipe to `upsun`. `recipe: platformsh` and the `--platformsh-auth` / `--platformsh-site` init options still work as deprecated aliases, and saved `platformsh.tokens` are picked up automatically.
+* Added Upsun Flex (`.upsun/config.yaml`) alongside Upsun Fixed (`.platform.app.yaml` + `.platform/`), including multiple applications and composable images.
+* Added Adobe Commerce Cloud projects (`.magento.app.yaml` + `.magento/`) with `MAGENTO_CLOUD_*` variables. `lando pull`, `lando push` and `lando tether` aren't available for them.
+* Replaced the frozen `docker.registry.platform.sh` images with Lando's own service plugins and official upstream images.
+* Mapped services onto Lando's MariaDB, MySQL, PostgreSQL, Redis, Memcached, MongoDB, Solr, Elasticsearch and Varnish plugins, and official images for OpenSearch, Valkey, RabbitMQ, Kafka, InfluxDB, ClickHouse, Chrome Headless, Gotenberg, Mercure, Chroma and Qdrant.
+* Provisioned MariaDB, MySQL and PostgreSQL schemas, endpoint users and grants, and added relationships between applications.
+* Set the `PLATFORM_*` runtime variables the way Upsun does. Landofile `env_file` values override `variables.env`.
+* Ran mounts, database setup, `pre_start`, `post_start`, `deploy` and `post_deploy` on every start in Upsun's order. A failing hook makes `lando start` exit nonzero.
+* Added PHP extension and `php.ini` handling, `variables.php`, declared dependencies, workers, and an nginx sidecar for non-PHP `web.locations` and static sites.
+* Served routes on hosts based on the Landofile `name`, with real redirects including `redirects.paths`. Exact hosts win over wildcard routes, and `config.domains` gives `{all}` routes one local host per domain.
+* Added Mailpit for outgoing mail. Set `config.mail: false` to turn it off.
+* Added an opt-in cron sidecar through `config.crons`, plus `lando cron <name>` and `lando operation <name>`.
+* Added `lando db-import`, `lando db-export`, and `lando xdebug-on` / `lando xdebug-off`.
+* Added `--skip-db`, `--skip-files` and `-A/--app` to `lando pull` and `lando push`, `--all-mounts` to `lando pull`, and gzip-compressed database dumps.
+* Added tether mode through `config.tethered` and `lando tether`, which connects your local app to a remote environment's services.
+* Read the project ID from the local Upsun project file and supported `lando init` from an existing checkout.
+* Installed the matching CLI (`upsun` with `UPSUN_CLI_TOKEN` for Flex, `platform` with `PLATFORMSH_CLI_TOKEN` for Fixed) and verified CLI, Node.js and Supercronic downloads against published checksums.
+* Rewrote the docs and added Leia-tested examples for Flex, Fixed, multi-app, composable, static, services and Adobe Commerce projects.
 
 ## v0.10.0 - [March 8, 2024](https://github.com/lando/platformsh/releases/tag/v0.10.0)
   * Updated to latest database services.
