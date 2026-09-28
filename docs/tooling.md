@@ -117,9 +117,9 @@ scheduled by Supercronic in the `<app>--cron` sidecar.
 
 ## Sync
 
-`lando pull` and `lando push` are documented in [Syncing](./sync.md).
+`lando pull`, `lando push` and `lando switch <environment>` are documented in [Syncing](./sync.md).
 
-Adobe Commerce Cloud projects get `pull`, `push` and `tether` commands that only
+Adobe Commerce Cloud projects get `pull`, `push`, `switch` and `tether` commands that only
 print a message and exit 1. Use the `magento-cloud` CLI for those workflows.
 
 ## SSH

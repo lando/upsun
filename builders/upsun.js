@@ -12,7 +12,7 @@ const {
   getEnvFileKeys,
   loadModel,
 } = require('../lib/workspace');
-const {getSupportedVersions} = require('../lib/mapping/versions');
+const {getSupportedVersions, getVersionTableStatus, VERSIONED_PLUGINS} = require('../lib/mapping/versions');
 const {getRuntimeEnv} = require('../lib/env');
 const {mapApplication, mapService} = require('../lib/mapping/index');
 const {getDatabaseInit} = require('../lib/mapping/database');
@@ -21,6 +21,7 @@ const {getProxyConfig} = require('../lib/routes');
 const {resolveCli, getCliEnv, getInstallStep} = require('../lib/cli');
 const {getPullTask} = require('../lib/pull');
 const {getPushTask} = require('../lib/push');
+const {getSwitchTask} = require('../lib/switch');
 const {readLocalProjectId} = require('../lib/project');
 const {getStartCommands} = require('../lib/hooks');
 const tokens = require('../lib/tokens');
@@ -74,10 +75,13 @@ module.exports = {
       const tetherEnvironment = typeof landoConfig.tethered === 'string' ? landoConfig.tethered : branch;
       const mail = landoConfig.mail !== false && !model.services.mailpit;
       const crons = landoConfig.crons === true;
-      const versions = getSupportedVersions(_.get(app, '_lando.config.plugins', []));
+      const plugins = _.get(app, '_lando.config.plugins', []);
+      const versions = getSupportedVersions(plugins);
       const configDir = path.join(_.get(app, '_config.userConfRoot', os.tmpdir()), 'config', 'upsun', app.project);
       const warnings = [...model.warnings];
+      /** @type {Record<string, import('../lib/mapping/mapping.types').HostMapEntry>} */
       const hostMap = {};
+      /** @type {import('../lib/mapping/mapping.types').MappedServices} */
       const services = {};
       const databases = [];
 
@@ -93,6 +97,7 @@ module.exports = {
         }
       }
 
+      /** @type {Record<string, import('../lib/mapping/mapping.types').ProxyTarget>} */
       const targets = {};
       const startCommands = {};
       const mailFrom = [];
@@ -131,6 +136,7 @@ module.exports = {
         });
         for (const [serviceName, definition] of Object.entries(mapped.services)) {
           const role = definition.upsun.role;
+          /** @type {import('../lib/mapping/mapping.types').AssembledService} */
           const def = _.omit(definition, ['upsun', 'build', 'build_as_root']);
           if (def.config) def.config = writeConfigFiles(configDir, serviceName, def.config);
           if (role === 'nginx') {
@@ -166,6 +172,10 @@ module.exports = {
         }
       }
 
+      const neededTypes = new Set(Object.values(services)
+          .map(def => String(def.type).split(':')[0]).filter(type => VERSIONED_PLUGINS.has(type)));
+      warnings.push(...getVersionTableStatus(plugins, neededTypes, versions));
+
       let mailProxy = {};
       if (mail) {
         const mailpit = getMailpitDefinition({mailFrom, host: `${name}.${domain}`});
@@ -200,6 +210,9 @@ module.exports = {
         },
         pull: getPullTask(model, closestApp, cliRef, cachedTokens),
         push: getPushTask(model, closestApp, cliRef, cachedTokens),
+        ...(model.layout !== 'magento' ? {
+          'switch <environment>': getSwitchTask(model, closestApp, cliRef, cachedTokens),
+        } : {}),
         ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {}),
       } : {};
 
