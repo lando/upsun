@@ -1,5 +1,9 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+* Added `lando switch <environment>` to check out an Upsun environment's branch and pull its databases and mounts.
+* Removed cached API tokens that Upsun rejects, and offered the token saved by the `upsun`/`platform` CLI in the `--auth` picker.
+* Declared optional `@lando/*` service plugin version floors and warned when a needed plugin is missing or older than the bundled version tables.
+* Documented arm64 support for compose-only services and how to pin an image tag when an Upsun version has no matching Docker tag.
 * Renamed the plugin to `@lando/upsun` and the recipe to `upsun`. `recipe: platformsh` and the `--platformsh-auth` / `--platformsh-site` init options still work as deprecated aliases, and saved `platformsh.tokens` are picked up automatically.
 * Added Upsun Flex (`.upsun/config.yaml`) alongside Upsun Fixed (`.platform.app.yaml` + `.platform/`), including multiple applications and composable images.
 * Added Adobe Commerce Cloud projects (`.magento.app.yaml` + `.magento/`) with `MAGENTO_CLOUD_*` variables. `lando pull`, `lando push` and `lando tether` aren't available for them.

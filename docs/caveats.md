@@ -18,6 +18,30 @@ services run on Lando's own images. Consequences:
 - MariaDB and PostgreSQL endpoint users are created with password `upsun` on
   every start. The endpoint name is the username; the default is `upsun`.
 
+### Plugin versions
+
+Install the Lando service plugins your project uses. They are optional peer
+dependencies: a Node.js-only project doesn't need the PHP plugin.
+
+<a id="plugin-missing"></a>
+
+- `plugin-missing`: a required plugin isn't installed. The built-in version list
+  lets mapping continue, but it doesn't install the plugin needed to start the service.
+
+<a id="plugin-outdated"></a>
+
+- `plugin-outdated`: an installed plugin's version list lacks the newest entry in
+  this recipe's built-in list. Some requested versions may fall back.
+
+Install or update the plugin named in the warning, for example:
+
+```bash
+lando plugin-add @lando/php
+```
+
+Only plugins used by your mapped local apps and services are checked. Tethered
+projects still check app runtimes, but skip remote services.
+
 ## Emulation limits
 
 - Crons always run on demand with `lando cron <name>`. Set `config.crons: true`
@@ -62,3 +86,39 @@ uses the selected application's relationship payload.
 The Upsun CLI treats a set `PLATFORM_RELATIONSHIPS` as "running on Upsun".
 `lando upsun`, `lando pull` and `lando push` unset it; if you call the CLI from
 your own scripts inside the container, do the same.
+
+## Apple Silicon and arm64
+
+Every compose-only service image this plugin maps was verified to publish both
+`linux/amd64` and `linux/arm64` builds via registry manifests on September 27, 2026.
+The tags below, including the init image, support both architectures; this does
+not guarantee that every Upsun version has a matching image tag.
+
+| Image | Verified tags | arm64 |
+|---|---|---|
+| `opensearchproject/opensearch` | `2`, `2.19.0`, `latest` | Yes |
+| `valkey/valkey` | `8.0`, `latest` | Yes |
+| `rabbitmq` | `3.13-management`, `4.1-management`, `management` | Yes |
+| `apache/kafka` | `3.9.1`, `4.0.0`, `latest` | Yes |
+| `influxdb` | `2.7`, `latest` | Yes |
+| `chromedp/headless-shell` | `132.0.6834.83`, `latest` | Yes |
+| `gotenberg/gotenberg` | `8`, `latest` | Yes |
+| `clickhouse/clickhouse-server` | `25.1`, `latest` | Yes |
+| `dunglas/mercure` | `latest` | Yes |
+| `chromadb/chroma` | `0.6.3`, `latest` | Yes |
+| `qdrant/qdrant` | `v1.12.0`, `latest` | Yes |
+| `node` (init) | `20-bookworm` | Yes |
+
+**Installers.** The Supercronic, Upsun/Platform CLI and Node.js installers select
+arm64 artifacts via `uname -m`, accepting both `aarch64` and `arm64`. PHP extensions
+delegate to `install-php-extensions` inside the image.
+
+### Version tags
+
+Upsun versions such as `kafka:4.0`, `opensearch:2.19`, `clickhouse:25`, `chroma:0.6`,
+`qdrant:1.12` and `chrome-headless:132` may not have matching Docker Hub tags:
+some images publish major-only or full patch tags instead. If `lando start`
+fails with a `manifest unknown` pull error, pin a published image tag in your
+Landofile using [`config.overrides`](./config.md#overrides), at
+`config.overrides.<service-name>.services.image` (for example, `apache/kafka:4.0.0`
+for your Kafka service), then run `lando rebuild`.
