@@ -58,4 +58,4 @@ If you are not sure whether something exists inside your application container o
 lando ssh -c "yarn"
 ```
 
-Also note that Lando tooling is hyper-powerful so you might want to [check out](https://docs.lando.dev/core/v3/tooling.html) some of its more advanced features.
+Also note that Lando tooling is hyper-powerful so you might want to [check out](https://docs.lando.dev/landofile/tooling.html) some of its more advanced features.
