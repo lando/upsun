@@ -6,12 +6,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {execFileSync, spawnSync} = require('child_process');
+const describeLinux = require('./helpers/describe-linux');
 
 const hook = path.join(__dirname, '..', 'scripts', 'upsun-hook.sh');
 const envHelper = path.join(__dirname, '..', 'scripts', 'upsun-env.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
 
-describe('Upsun hooks', () => {
+describeLinux('Upsun hooks', () => {
   it('runs the selected hook from PLATFORM_APP_DIR with .environment loaded', () => {
     const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-hook-'));
     fs.writeFileSync(path.join(appDir, '.environment'), 'HOOK_VALUE=loaded\n');

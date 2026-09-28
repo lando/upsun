@@ -9,6 +9,7 @@ const {getSwitchTask} = require('../lib/switch');
 const {getPullTask} = require('../lib/pull');
 const {getMagentoTooling} = require('../lib/tooling');
 const recipe = require('../builders/upsun');
+const describeLinux = require('./helpers/describe-linux');
 
 const fixture = name => path.join(__dirname, 'fixtures', name);
 const script = path.join(__dirname, '..', 'scripts', 'upsun-switch.sh');
@@ -83,7 +84,7 @@ describe('switch tooling', () => {
   }
 });
 
-describe('Upsun switch script', () => {
+describeLinux('Upsun switch script', () => {
   let root;
   let env;
   beforeEach(() => {

@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const {spawn, spawnSync} = require('child_process');
 const chai = require('chai');
+const describeLinux = require('./helpers/describe-linux');
 chai.should();
 
 const fixtures = path.join(__dirname, 'fixtures');
@@ -36,7 +37,7 @@ const run = (args, root, bin, extraEnv = {}) => spawnSync('bash', [script, ...ar
   },
 });
 
-describe('database initialization helper', function() {
+describeLinux('database initialization helper', function() {
   // Cases wait on real sleeps and UPSUN_DB_WAIT timeouts
   this.timeout(20000); // eslint-disable-line no-invalid-this
 

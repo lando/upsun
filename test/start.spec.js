@@ -6,13 +6,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {execFileSync, spawn, spawnSync} = require('child_process');
+const describeLinux = require('./helpers/describe-linux');
 
 const start = path.join(__dirname, '..', 'scripts', 'upsun-start.sh');
 const envHelper = path.join(__dirname, '..', 'scripts', 'upsun-env.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
 const itUnlessWindows = process.platform === 'win32' ? it.skip : it;
 
-describe('Upsun start wrapper', () => {
+describeLinux('Upsun start wrapper', () => {
   it('runs pre_start then execs the app command from the app dir', () => {
     const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
     try {

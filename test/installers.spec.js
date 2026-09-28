@@ -6,6 +6,7 @@ const path = require('path');
 const {createHash} = require('crypto');
 const {execFileSync, spawnSync} = require('child_process');
 const chai = require('chai');
+const describeLinux = require('./helpers/describe-linux');
 chai.should();
 
 const fixtures = path.join(__dirname, 'fixtures');
@@ -44,7 +45,7 @@ const run = (script, args, env) => spawnSync('bash', [script, ...args], {
   },
 });
 
-describe('runtime installers', () => {
+describeLinux('runtime installers', () => {
   afterEach(() => {
     while (roots.length > 0) fs.rmSync(roots.pop(), {recursive: true, force: true});
   });

@@ -9,6 +9,7 @@ chai.should();
 
 const {getPullTask} = require('../lib/pull');
 const {getPushTask} = require('../lib/push');
+const describeLinux = require('./helpers/describe-linux');
 
 const harness = path.join(__dirname, 'fixtures', 'sync-harness.sh');
 const mockPlatform = path.join(__dirname, 'fixtures', 'mock-platform.sh');
@@ -68,7 +69,7 @@ describe('pull/push shell contract', () => {
   });
 });
 
-describe('upsun_parse_sync_args', () => {
+describeLinux('upsun_parse_sync_args', () => {
   it('parses space-form relationship and mount flags', () => {
     const out = runHarness(['parse', '-r', 'database', '-m', 'web/sites/default/files']);
     out.should.match(/RELS=database/);
@@ -167,7 +168,7 @@ describe('sync source contracts', () => {
   });
 });
 
-describe('upsun_ensure_active_environment', () => {
+describeLinux('upsun_ensure_active_environment', () => {
   /**
    * Run ensure with a fresh mock log.
    *
@@ -291,7 +292,7 @@ describe('upsun_ensure_active_environment', () => {
   });
 });
 
-describe('upsun_bind_project', () => {
+describeLinux('upsun_bind_project', () => {
   it('records project:set-remote in the bind-mode mock log', () => {
     const log = path.join(os.tmpdir(), `mock-platform-bind-${process.pid}-${Date.now()}.log`);
     try {

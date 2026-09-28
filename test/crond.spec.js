@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {execFileSync, spawnSync} = require('child_process');
+const describeLinux = require('./helpers/describe-linux');
 
 const crond = path.join(__dirname, '..', 'scripts', 'upsun-crond.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
@@ -22,7 +23,7 @@ function encodeApplication(application) {
   return Buffer.from(JSON.stringify(application)).toString('base64');
 }
 
-describe('Upsun cron scheduler', () => {
+describeLinux('Upsun cron scheduler', () => {
   it('renders a supercronic crontab from PLATFORM_APPLICATION', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-crond-'));
     const crontab = path.join(root, 'crontab');

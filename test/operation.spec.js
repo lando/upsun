@@ -6,11 +6,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {execFileSync, spawnSync} = require('child_process');
+const describeLinux = require('./helpers/describe-linux');
 
 const operation = path.join(__dirname, '..', 'scripts', 'upsun-operation.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
 
-describe('Upsun operations', () => {
+describeLinux('Upsun operations', () => {
   it('runs the named operation with .environment loaded', () => {
     const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-operation-'));
     const application = Buffer.from(JSON.stringify({

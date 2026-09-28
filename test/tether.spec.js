@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const {spawnSync} = require('child_process');
 const chai = require('chai');
+const describeLinux = require('./helpers/describe-linux');
 chai.should();
 
 const fixtures = path.join(__dirname, 'fixtures');
@@ -105,7 +106,7 @@ const cleanupAll = () => {
   }
 };
 
-describe('Upsun tether script', function() {
+describeLinux('Upsun tether script', function() {
   // Several cases wait for real tunnel listeners and UPSUN_TETHER_WAIT timeouts
   this.timeout(20000); // eslint-disable-line no-invalid-this
 

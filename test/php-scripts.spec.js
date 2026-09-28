@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const {spawnSync} = require('child_process');
 const chai = require('chai');
+const describeLinux = require('./helpers/describe-linux');
 chai.should();
 
 const fixtures = path.join(__dirname, 'fixtures');
@@ -23,7 +24,7 @@ const run = (script, args, env) => spawnSync('bash', [script, ...args], {
   env: {...process.env, UPSUN_LOG_HELPER: path.join(fixtures, 'log.sh'), ...env},
 });
 
-describe('PHP helper scripts', () => {
+describeLinux('PHP helper scripts', () => {
   afterEach(() => {
     while (roots.length > 0) fs.rmSync(roots.pop(), {recursive: true, force: true});
   });

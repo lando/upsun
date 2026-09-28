@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const {execFileSync} = require('child_process');
 const chai = require('chai');
+const describeLinux = require('./helpers/describe-linux');
 chai.should();
 
 const mockPlatform = path.join(__dirname, 'fixtures', 'mock-platform.sh');
@@ -68,7 +69,7 @@ function runSync(script, args, extraEnv = {}) {
   }
 }
 
-describe('Lando-native sync scripts', () => {
+describeLinux('Lando-native sync scripts', () => {
   it('downloads remote databases and imports them with local clients', () => {
     const logs = runSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), [
       '--env', 'dev', '-r', 'database', '-r', 'pg', '-m', 'files',
