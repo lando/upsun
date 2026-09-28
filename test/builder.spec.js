@@ -148,7 +148,7 @@ describe('builders/upsun', () => {
     expect(services.app).to.include({via: 'nginx', webroot: 'web'});
     expect(services.app.type).to.match(/^php:8\./);
     // Rendered files are written under the Lando config dir so `$` never reaches compose interpolation
-    expect(services.app.config.vhosts).to.match(/\/config\/upsun\/[^/]+\/app-vhost\.conf$/);
+    expect(services.app.config.vhosts).to.match(/[\\/]config[\\/]upsun[\\/][^\\/]+[\\/]app-vhost\.conf$/);
     expect(fs.readFileSync(services.app.config.vhosts, 'utf8')).to.include('fastcgi_pass fpm:9000');
     expect(fs.readFileSync(services.app.config.php, 'utf8')).to.include('memory_limit = 512M');
     expect(services.db.creds).to.deep.equal({user: 'upsun', password: 'upsun', database: 'main'});
