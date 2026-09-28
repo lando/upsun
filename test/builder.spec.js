@@ -59,6 +59,13 @@ describe('builders/upsun', () => {
     expect(instance.config.tooling).not.to.have.any.keys('db-import <file>', 'db-export [file]');
   });
 
+  it('leaves an unsupported closest runtime out of services instead of adding it as undefined', () => {
+    const {instance, app} = build(fixture('flex-unsupported'));
+    expect(instance.config.services).to.not.have.property('app');
+    expect(Object.values(instance.config.services)).to.not.include(undefined);
+    expect(app.upsun.warnings.map(warning => warning.code)).to.include('runtime-unsupported');
+  });
+
   it('replaces pull, push and tether with unsupported messages for magento projects', () => {
     const {spawnSync} = require('child_process');
     const {instance} = build(fixture('fixed-magento'));

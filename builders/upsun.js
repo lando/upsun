@@ -216,8 +216,9 @@ module.exports = {
         ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {}),
       } : {};
 
-      // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service
-      const ordered = {[closestApp]: services[closestApp], ...services};
+      // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service.
+      // An unsupported runtime maps to no service (only a warning), so there is nothing to put first.
+      const ordered = services[closestApp] ? {[closestApp]: services[closestApp], ...services} : services;
       options.services = _.merge({}, ordered, options.overrides, options.services);
       options.proxy = _.merge({}, proxy, options.proxy);
       options.tooling = _.merge({}, appTooling, options.tooling);
