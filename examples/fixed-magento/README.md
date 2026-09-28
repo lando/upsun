@@ -24,7 +24,7 @@ lando exec mymagento -- curl -fsS http://mymagento_nginx/ | grep 'app=mymagento'
 lando exec mymagento -- curl -fsS http://mymagento_nginx/ | grep 'relationships=database,redis'
 
 # Should explain why remote operations are unavailable
-lando pull 2>&1 | grep 'not available for Adobe Commerce'
+output=$(lando pull 2>&1) && exit 1; printf '%s\n' "$output" | grep 'not available for Adobe Commerce'
 ```
 
 ## Destroy tests
