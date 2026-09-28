@@ -93,7 +93,7 @@ const appHook = (app, lando) => {
  * Build engine commands for every configured Upsun start command.
  *
  * @param {object} app Lando app.
- * @returns {object[]} Engine run commands.
+ * @returns {import('./lib/mapping/mapping.types').EngineRunCommand[]} Engine run commands.
  */
 function buildRunCommands(app) {
   const meUser = service => _.find(app.info || [], {service})?.meUser || 'www-data';
