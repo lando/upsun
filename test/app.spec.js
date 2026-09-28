@@ -14,6 +14,7 @@ const makeApp = recipe => {
       id: 'orig', name: 'test',
       config: {recipe, config: {id: 'proj'}},
       containers: {'drupal': 'c-drupal', 'drupal--queue': 'c-queue'},
+      services: ['drupal', 'drupal--queue'],
       compose: ['a.yml'],
       project: 'proj',
       info: [{service: 'drupal', meUser: 'www-data'}, {service: 'drupal--queue', meUser: 'node'}],
@@ -77,6 +78,15 @@ describe('app.js', () => {
     app.config.proxy.app_nginx = [];
     events['pre-start']();
     expect(compose).to.have.length(1);
+  });
+
+  it('keeps the core default service when the closest app has no service', () => {
+    const {app, events} = makeApp('upsun');
+    appHook(app, {});
+    app._defaultService = 'drupal--queue';
+    app.services = ['drupal--queue', 'mailpit'];
+    events['ready']();
+    expect(app._defaultService).to.equal('drupal--queue');
   });
 
   it('ignores non-upsun recipes', () => {

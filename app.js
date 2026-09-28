@@ -70,8 +70,10 @@ const appHook = (app, lando) => {
   // The closest app is the primary service (lando ssh default), not whichever v3 service came first.
   // Lando computes _defaultService after post-init and bakes it into the ssh task default on `ready` @1,
   // so this must run before that.
+  // An unsupported runtime maps to no service, so only point at the closest app when it exists.
   app.events.on('ready', 0, () => {
-    if (_.get(app, 'upsun.closestApp')) app._defaultService = app.upsun.closestApp;
+    const closestApp = _.get(app, 'upsun.closestApp');
+    if (closestApp && _.includes(app.services, closestApp)) app._defaultService = closestApp;
   });
 
   // Cache a token passed explicitly to lando pull/push once it proves valid
