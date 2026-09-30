@@ -8,6 +8,7 @@ const chai = require('chai');
 chai.should();
 
 const {load} = require('../lib/config/index');
+const {normalize} = require('../lib/config/normalize');
 const UpsunYaml = require('../lib/config/yaml');
 
 const fixture = name => path.join(__dirname, 'fixtures', name);
@@ -224,6 +225,47 @@ describe('config model loading', () => {
     });
     app.runtime.extensions.should.eql(['redis', 'xsl']);
     model.warnings.should.eql([]);
+  });
+
+  it('merges filtered composable PHP extension lists in raw-first order without mutating input', () => {
+    const raw = {applications: {app: {
+      type: 'composable:26.05',
+      runtime: {
+        extensions: ['xsl', null, 42, 'redis', 'xsl'],
+        disabled_extensions: ['xdebug', false, null, 'apcu', 'xdebug'],
+      },
+      stack: {runtimes: [{'php@8.4': {
+        extensions: ['redis', null, false, 'intl', 'intl', 'xsl'],
+        disabled_extensions: ['apcu', 42, null, 'opcache', 'opcache', 'xdebug'],
+      }}]},
+    }}};
+    const original = structuredClone(raw);
+
+    const app = normalize(raw, 'flex').applications.app;
+
+    app.runtime.should.eql({
+      extensions: ['xsl', 'redis', 'intl'],
+      disabled_extensions: ['xdebug', 'apcu', 'opcache'],
+    });
+    app.composable.runtimes[0].options.should.eql({
+      extensions: ['redis', 'intl', 'xsl'],
+      disabled_extensions: ['apcu', 'opcache', 'xdebug'],
+    });
+    raw.should.eql(original);
+  });
+
+  it('defaults missing composable PHP extension lists to empty without mutating input', () => {
+    const raw = {applications: {app: {
+      type: 'composable:26.05',
+      stack: {runtimes: [{'php@8.4': {}}]},
+    }}};
+    const original = structuredClone(raw);
+
+    const app = normalize(raw, 'flex').applications.app;
+
+    app.runtime.should.eql({extensions: [], disabled_extensions: []});
+    app.composable.runtimes[0].options.should.eql({});
+    raw.should.eql(original);
   });
 
   it('keeps the legacy flat composable stack and warns about ignored runtimes', () => {
