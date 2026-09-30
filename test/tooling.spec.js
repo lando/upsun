@@ -93,35 +93,45 @@ describe('lib/tooling', () => {
     expect(tooling.getLanguageTooling('app', 'java')).to.deep.equal({});
   });
 
-  it('builds relationship shells from the host map', () => {
-    const app = {relationships: {
-      database: {service: 'db', endpoint: 'mysql'},
-      pg: {service: 'pg', endpoint: 'postgresql'},
-      cache: {service: 'redis', endpoint: 'redis'},
-      search: {service: 'os', endpoint: 'opensearch'},
-    }};
-    const services = {db: {type: 'mariadb:11.4'}, pg: {type: 'postgres:16'}, redis: {type: 'redis:7.2'},
-      os: {type: 'compose'}};
-    const hostMap = {
-      'db': {username: 'upsun', password: 'upsun', path: 'main'},
-      'db#mysql': {username: 'upsun', password: 'upsun', path: 'main'},
-      'pg': {username: 'postgres', password: '', path: 'main'},
-      'redis': {}, 'os': {},
-    };
-    const result = tooling.getRelationshipTooling(app, services, hostMap);
-    expect(result.database).to.include({service: 'db', cmd: 'mysql -uupsun -pupsun main'});
-    expect(result.pg).to.include({service: 'pg', cmd: 'psql -U postgres main'});
-    expect(result.pg.env).to.deep.equal({PGPASSWORD: ''});
-    expect(result.cache.cmd).to.equal('redis-cli');
-    expect(result).to.not.have.property('search');
-  });
+  for (const type of ['mariadb:11.4', 'mysql:8.0']) {
+    it(`builds relationship shells from the host map for ${type}`, () => {
+      const app = {relationships: {
+        database: {service: 'db', endpoint: 'mysql'},
+        pg: {service: 'pg', endpoint: 'postgresql'},
+        cache: {service: 'redis', endpoint: 'redis'},
+        search: {service: 'os', endpoint: 'opensearch'},
+      }};
+      const services = {db: {type}, pg: {type: 'postgres:16'}, redis: {type: 'redis:7.2'},
+        os: {type: 'compose'}};
+      const hostMap = {
+        'db': {username: 'upsun', password: 'upsun', path: 'main'},
+        'db#mysql': {username: 'upsun', password: 'upsun', path: 'main'},
+        'pg': {username: 'postgres', password: '', path: 'main'},
+        'redis': {}, 'os': {},
+      };
+      const result = tooling.getRelationshipTooling(app, services, hostMap);
+      expect(result.database).to.deep.equal({
+        service: 'db',
+        description: 'Drops into a shell on the database relationship',
+        cmd: 'mysql -uupsun -pupsun main',
+      });
+      expect(result.pg).to.include({service: 'pg', cmd: 'psql -U postgres main'});
+      expect(result.pg.env).to.deep.equal({PGPASSWORD: ''});
+      expect(result.cache.cmd).to.equal('redis-cli');
+      expect(result).to.not.have.property('search');
+    });
 
-  it('omits the database from relationship shells when the endpoint path is null', () => {
-    const app = {relationships: {reports: {service: 'db', endpoint: 'reporter'}}};
-    const hostMap = {'db#reporter': {username: 'reporter', password: 'upsun', path: null}};
-    const result = tooling.getRelationshipTooling(app, {db: {type: 'mariadb:11.4'}}, hostMap);
-    expect(result.reports.cmd).to.equal('mysql -ureporter -pupsun');
-  });
+    it(`omits the database from ${type} relationship shells when the endpoint path is null`, () => {
+      const app = {relationships: {reports: {service: 'db', endpoint: 'reporter'}}};
+      const hostMap = {'db#reporter': {username: 'reporter', password: 'upsun', path: null}};
+      const result = tooling.getRelationshipTooling(app, {db: {type}}, hostMap);
+      expect(result.reports).to.deep.equal({
+        service: 'db',
+        description: 'Drops into a shell on the reports relationship',
+        cmd: 'mysql -ureporter -pupsun',
+      });
+    });
+  }
 
   it('adds a valkey shell for compose services', () => {
     const app = {relationships: {cache: {service: 'cache', endpoint: 'valkey'}}};
