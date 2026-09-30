@@ -208,12 +208,11 @@ module.exports = {
           dir,
           env: cliEnv,
         },
-        pull: getPullTask(model, closestApp, cliRef, cachedTokens),
-        push: getPushTask(model, closestApp, cliRef, cachedTokens),
-        ...(model.layout !== 'magento' ? {
+        ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {
+          'pull': getPullTask(model, closestApp, cliRef, cachedTokens),
+          'push': getPushTask(model, closestApp, cliRef, cachedTokens),
           'switch <environment>': getSwitchTask(model, closestApp, cliRef, cachedTokens),
-        } : {}),
-        ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {}),
+        }),
       } : {};
 
       // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service.
