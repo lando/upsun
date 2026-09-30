@@ -11,7 +11,6 @@ const describeLinux = require('./helpers/describe-linux');
 const crond = path.join(__dirname, '..', 'scripts', 'upsun-crond.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
 const mockSupercronic = path.join(__dirname, 'fixtures', 'mock-supercronic.sh');
-const itUnlessWindows = process.platform === 'win32' ? it.skip : it;
 
 /**
  * Encode an application payload for PLATFORM_APPLICATION.
@@ -87,7 +86,7 @@ describeLinux('Upsun cron scheduler', () => {
     }
   });
 
-  itUnlessWindows('idles without crons', () => {
+  it('idles without crons', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-crond-'));
     try {
       const result = spawnSync('timeout', ['2', 'bash', crond], {

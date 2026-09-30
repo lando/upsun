@@ -11,7 +11,6 @@ const describeLinux = require('./helpers/describe-linux');
 const start = path.join(__dirname, '..', 'scripts', 'upsun-start.sh');
 const envHelper = path.join(__dirname, '..', 'scripts', 'upsun-env.sh');
 const logHelper = path.join(__dirname, 'fixtures', 'log.sh');
-const itUnlessWindows = process.platform === 'win32' ? it.skip : it;
 
 describeLinux('Upsun start wrapper', () => {
   it('runs pre_start then execs the app command from the app dir', () => {
@@ -37,7 +36,7 @@ describeLinux('Upsun start wrapper', () => {
     }
   });
 
-  itUnlessWindows('idles when there is no start command', () => {
+  it('idles when there is no start command', () => {
     const appDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-start-'));
     try {
       const result = spawnSync('timeout', ['2', 'bash', start], {
