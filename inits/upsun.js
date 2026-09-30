@@ -125,8 +125,13 @@ module.exports = {
       }, {
         name: 'clone-repo',
         image: 'node:20-bookworm',
-        cmd: opts => `${cli.getInstallStep(flavor)} && ${binary} get ${opts['upsun-project-id']} /app`,
-        env: opts => cli.getCliEnv(flavor, {token: _.trim(opts['upsun-auth'])}),
+        // Lando's init runner only forwards cmd/user/remove from a step, so the CLI env has to
+        // ride along on the command itself. It runs through /bin/sh -c, so VAR=value prefixes work.
+        cmd: opts => {
+          const env = cli.getCliEnv(flavor, {token: _.trim(opts['upsun-auth'])});
+          const prefix = _.map(env, (value, key) => `${key}=${value}`).join(' ');
+          return `${cli.getInstallStep(flavor)} && ${prefix} ${binary} get ${opts['upsun-project-id']} /app`;
+        },
         remove: 'true',
       }];
     },

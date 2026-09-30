@@ -35,18 +35,18 @@ describe('inits/upsun', () => {
     const cloneFlex = flex.find(step => step.name === 'clone-repo');
     const cloneFixed = fixed.find(step => step.name === 'clone-repo');
     expect(cloneFlex.image).to.equal('node:20-bookworm');
-    expect(cloneFlex.cmd({'upsun-project-id': 'abc'}))
-        .to.equal('/helpers/upsun-install-cli.sh upsun && upsun get abc /app');
-    expect(cloneFixed.cmd({'upsun-project-id': 'abc'}))
-        .to.equal('/helpers/upsun-install-cli.sh platform && platform get abc /app');
-    expect(cloneFlex.env({'upsun-auth': ' tok '})).to.include({
-      UPSUN_CLI_TOKEN: 'tok',
-      UPSUN_CLI_NO_INTERACTION: '1',
-      UPSUN_CLI_UPDATES_CHECK: '0',
-      UPSUN_CLI_CONTEXT: '1',
-      PLATFORM_APPLICATION: '',
-      PLATFORM_RELATIONSHIPS: '',
-    });
+    const flexCmd = cloneFlex.cmd({'upsun-project-id': 'abc', 'upsun-auth': ' tok '});
+    const fixedCmd = cloneFixed.cmd({'upsun-project-id': 'abc', 'upsun-auth': ' tok '});
+    expect(flexCmd).to.match(/^\/helpers\/upsun-install-cli\.sh upsun && .* upsun get abc \/app$/);
+    expect(fixedCmd).to.match(/^\/helpers\/upsun-install-cli\.sh platform && .* platform get abc \/app$/);
+    // lando's init runner ignores step.env, so the CLI env must be inlined into the command
+    expect(cloneFlex.env).to.equal(undefined);
+    for (const pair of ['UPSUN_CLI_TOKEN=tok', 'UPSUN_CLI_NO_INTERACTION=1', 'UPSUN_CLI_UPDATES_CHECK=0',
+      'UPSUN_CLI_CONTEXT=1', 'PLATFORM_APPLICATION=', 'PLATFORM_RELATIONSHIPS=']) {
+      expect(flexCmd).to.include(` ${pair} `);
+    }
+    expect(fixedCmd).to.include(' PLATFORMSH_CLI_TOKEN=tok ').and.to.include(' PLATFORMSH_CLI_NO_INTERACTION=1 ');
+    expect(fixedCmd).to.not.include('UPSUN_CLI_TOKEN');
   });
 
   it('derives config.id from the local project file for --source cwd', async () => {
