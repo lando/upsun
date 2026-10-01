@@ -43,7 +43,7 @@ Pipeline (pure modules first, glue last). `docs/architecture.md` and `docs/lifec
 
 Tooling and sync: `lib/tooling.js` (language tooling, relationship shells, `getMagentoTooling`), `lib/pull.js`, `lib/push.js`, `lib/switch.js` build tooling tasks that call the bash scripts.
 
-Auth: `lib/api.js` (native `fetch`, no HTTP library), `lib/tokens.js` (lando cache `upsun.tokens`, legacy `platformsh.tokens`, plus the CLI's own saved token file), `lib/auth.js` (init/pull prompts), `lib/cli.js` (`resolveCli`: flex uses the `upsun` binary and `UPSUN_CLI_TOKEN`; fixed uses `platform` and `PLATFORMSH_CLI_TOKEN`; `getCliEnv`, `getInstallStep`).
+Auth: `lib/api.js` (native `fetch`, no HTTP library), `lib/login.js` (loopback PKCE browser login, named API token creation and immediate caching), `lib/tokens.js` (lando cache `upsun.tokens`, legacy `platformsh.tokens`, plus the CLI's own saved token file), `lib/auth.js` (init/pull prompts), `lib/cli.js` (`resolveCli`: flex uses the `upsun` binary and `UPSUN_CLI_TOKEN`; fixed uses `platform` and `PLATFORMSH_CLI_TOKEN`; `getCliEnv`, `getInstallStep`).
 
 ## Directory map
 
@@ -125,6 +125,10 @@ Enforced by `eslint.config.js` (google + jsdoc recommended):
 
 ## Repo-Specific Gotchas
 
+- **Browser login redirect** must be exactly `http://127.0.0.1:<port>`; trailing slashes, paths and `localhost` are rejected.
+- **API token creation needs a login from the last 5 minutes** (401 `insufficient_user_authentication`, `max_age=300`). `lib/login.js` sends `max_age=300` up front and retries once with the challenge's `max_age`/`amr`; a long-lived browser session alone is not enough.
+- **Skip browser login with Enter only.** Escape leaks typed text into readline's next password answer. Hidden browser questions must keep `name: 'upsun-auth'` / `name: 'auth'` so explicit flags bypass them.
+- **Console has no username-free API Tokens deep link.** Use `/-/users/<encoded-username>/settings/tokens` when known; otherwise use `/-/users/me/settings` and ask the user to select API Tokens.
 - **Autoscan**: `plugin.yml` has `legacy: true`, so Lando picks up new files in `builders/`, `inits/`, `scripts/` and `app.js` automatically. Anything runtime-loaded must not be listed in `.npmignore` (currently `.github`, `docs`, `examples`, `test`, `scripts/update-versions.js`).
 - **`lib/mapping/version-tables.js` is generated.** Never hand-edit it; run `node scripts/update-versions.js`. Runtime logic (`resolveVersion`, `getSupportedVersions`, `getVersionTableStatus`) lives in `lib/mapping/versions.js`, which the generator does not touch.
 - **Env values are stringified by Lando**: never put `undefined` in a tooling `env` block; it reaches the container as the literal string `"undefined"`. See `getCliEnv` in `lib/cli.js`, which only sets keys that have values.
