@@ -3,11 +3,14 @@
 const path = require('path');
 const {expect} = require('chai');
 const init = require('../inits/upsun');
+const login = require('../lib/login');
 
 const lando = {config: {home: '/tmp'}, cache: {get: () => []}};
 const fixture = name => path.join(__dirname, 'fixtures', name);
 
 describe('inits/upsun', () => {
+  const originalLogin = login.promptBrowserLogin;
+  afterEach(() => login.promptBrowserLogin = originalLogin);
   it('registers upsun and platformsh sources that both resolve to the upsun recipe', () => {
     expect(init.name).to.equal('upsun');
     expect(init.sources.map(source => source.name)).to.deep.equal(['upsun', 'platformsh']);
@@ -21,7 +24,7 @@ describe('inits/upsun', () => {
   it('accepts deprecated --platformsh-* flags as aliases', () => {
     const options = init.options(lando);
     expect(options).to.have.all.keys(
-      'upsun-auth', 'upsun-auth-token', 'upsun-site', 'platformsh-auth', 'platformsh-site',
+      'upsun-auth', 'upsun-auth-browser', 'upsun-auth-token', 'upsun-site', 'platformsh-auth', 'platformsh-site',
     );
     const answers = {'source': 'platformsh', 'platformsh-site': 'foo', 'platformsh-auth': 'tok'};
     init.overrides.name.when(answers);
@@ -63,7 +66,51 @@ describe('inits/upsun', () => {
     expect(tokenOptions['upsun-auth'].interactive.when({recipe: 'upsun', source: 'cwd'})).to.equal(false);
     expect(tokenOptions['upsun-auth'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
     expect(options['upsun-auth-token'].interactive.when({recipe: 'upsun', source: 'cwd'})).to.equal(false);
-    expect(options['upsun-auth-token'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
+    expect(options['upsun-auth'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(true);
+    expect(options['upsun-auth-token'].interactive.when({recipe: 'upsun', source: 'upsun'})).to.equal(false);
+    expect(options['upsun-auth-token'].interactive.when({'recipe': 'upsun', 'source': 'upsun',
+      'upsun-auth': 'more'})).to.equal(true);
+  });
+
+  it('defaults to browser login for first-time remote users', () => {
+    const options = init.options(lando);
+    expect(options['upsun-auth'].interactive.choices).to.deep.equal([
+      {name: 'Log in with your browser', value: 'browser'}, {name: 'Paste an API token', value: 'more'},
+    ]);
+    expect(options['upsun-auth-browser'].hidden).to.equal(true);
+    expect(options['upsun-auth-browser'].interactive).to.include({name: 'upsun-auth', weight: 515});
+    expect(options['upsun-auth'].interactive.when({recipe: 'platformsh', source: 'platformsh'})).to.equal(true);
+  });
+
+  for (const source of ['upsun', 'platformsh']) {
+    for (const result of ['created', undefined]) {
+      it(`routes ${source} browser login to ${result ? 'the token' : 'paste'} when selected`, async () => {
+        let passed;
+        login.promptBrowserLogin = async options => {
+          passed = options;
+          return result;
+        };
+        const options = init.options(lando);
+        const answers = {'source': source, 'recipe': 'upsun', 'upsun-auth': 'browser'};
+        expect(await options['upsun-auth-browser'].interactive.when(answers)).to.equal(false);
+        expect(passed).to.deep.equal({lando, vendor: source});
+        expect(answers['upsun-auth']).to.equal(result || 'more');
+        expect(options['upsun-auth-token'].interactive.when(answers)).to.equal(!result);
+      });
+    }
+  }
+
+  it('does not call browser login for other choices, recipes or local sources', async () => {
+    login.promptBrowserLogin = async () => {
+      throw new Error('Must not log in');
+    };
+    const question = init.options(lando)['upsun-auth-browser'].interactive;
+    for (const answers of [
+      {'source': 'upsun', 'recipe': 'upsun', 'upsun-auth': 'more'},
+      {'source': 'upsun', 'recipe': 'upsun', 'upsun-auth': 'cached'},
+      {'source': 'cwd', 'recipe': 'upsun', 'upsun-auth': 'browser'},
+      {'source': 'upsun', 'recipe': 'drupal', 'upsun-auth': 'browser'},
+    ]) expect(await question.when(answers)).to.equal(false);
   });
 
   it('keeps the default name prompt for local sources', () => {

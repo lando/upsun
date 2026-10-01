@@ -3,6 +3,7 @@
 const _ = require('lodash');
 const {getAccountInfo} = require('../lib/api');
 const cli = require('../lib/cli');
+const login = require('../lib/login');
 const {readLocalProjectId} = require('../lib/project');
 const tokens = require('../lib/tokens');
 const utils = require('../lib/utils');
@@ -28,13 +29,12 @@ const isRemoteSource = answers => ['upsun', 'platformsh'].includes(answers.sourc
 
 const getTokenChoices = cached => _(cached)
     .map(token => ({name: token.email, value: token.token}))
-    .thru(list => list.concat([{name: 'add or refresh a token', value: 'more'}]))
+    .thru(list => list.concat([{name: 'Log in with your browser', value: 'browser'},
+      {name: 'Paste an API token', value: 'more'}]))
     .value();
 
-const showTokenList = (answers, cached) => isRemoteSource(answers) &&
-  utils.isUpsunRecipe(answers.recipe) && !_.isEmpty(cached);
-const showTokenEntry = (answers, cached) => isRemoteSource(answers) && utils.isUpsunRecipe(answers.recipe) &&
-  (_.isEmpty(cached) || answers['upsun-auth'] === 'more');
+const showTokenList = answers => isRemoteSource(answers) && utils.isUpsunRecipe(answers.recipe);
+const showTokenEntry = answers => showTokenList(answers) && answers['upsun-auth'] === 'more';
 
 const getProjects = (answers, lando, input = null) => {
   normalizeInitOptions(answers);
@@ -59,8 +59,22 @@ module.exports = {
         type: 'list',
         choices: getTokenChoices(tokens.readTokens(lando)),
         message: 'Select an Upsun account',
-        when: answers => showTokenList(answers, tokens.readTokens(lando)),
+        when: answers => showTokenList(answers),
         weight: 510,
+      },
+    },
+    'upsun-auth-browser': {
+      hidden: true,
+      interactive: {
+        name: 'upsun-auth',
+        weight: 515,
+        when: async answers => {
+          if (showTokenList(answers) && answers['upsun-auth'] === 'browser') {
+            answers['upsun-auth'] = await login.promptBrowserLogin({lando,
+              vendor: cli.resolveCli(getFlavor(answers)).vendor}) || 'more';
+          }
+          return false;
+        },
       },
     },
     'upsun-auth-token': {
@@ -69,7 +83,7 @@ module.exports = {
         name: 'upsun-auth',
         type: 'password',
         message: 'Enter an Upsun API token',
-        when: answers => showTokenEntry(answers, tokens.readTokens(lando)),
+        when: answers => showTokenEntry(answers),
         weight: 520,
       },
     },
