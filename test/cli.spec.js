@@ -9,6 +9,7 @@ describe('cli', () => {
     API_CONFIG.should.eql({
       api_url: 'https://api.upsun.com',
       authentication_url: 'https://auth.upsun.com',
+      console_url: 'https://console.upsun.com',
     });
     Object.isFrozen(API_CONFIG).should.equal(true);
   });
