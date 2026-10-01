@@ -260,13 +260,43 @@ For a Landofile named `my-project`, `www.{default}` resolves to
 ## CLI and sync
 
 `lib/cli.js` exports the frozen `API_CONFIG` with endpoints
-`https://api.upsun.com` and `https://auth.upsun.com`. Flex uses `upsun` /
+`https://api.upsun.com`, `https://auth.upsun.com` and `https://console.upsun.com`. Flex uses `upsun` /
 `UPSUN_CLI_TOKEN`; Fixed uses `platform` / `PLATFORMSH_CLI_TOKEN`.
 
-`lib/api.js#getAccountInfo` is the only direct API call. `lando init` and the
-token cache use it to exchange an API token at
-`POST https://auth.upsun.com/oauth2/token` and read `GET https://api.upsun.com/me`
-(email and project list), using Node's built-in `fetch`.
+`lib/api.js` owns all direct API calls, using Node's built-in `fetch`:
+
+- `getAccountInfo` exchanges an API token at `POST /oauth2/token` on the auth
+  endpoint, then calls `getMe` (`GET /me` on the API endpoint).
+- `registerOAuthClient` registers a fresh public client at `POST /oauth2/register`.
+- `exchangeAuthorizationCode` exchanges a PKCE code at `POST /oauth2/token`.
+- `createApiToken` posts a token name to `/users/<encoded-id>/api-tokens`.
+- `revokeOAuthToken` revokes the temporary refresh token at `POST /oauth2/revoke`.
+
+`lib/login.js` runs browser login for remote init and the pull/push/switch
+account picker. It binds an HTTP callback on `127.0.0.1` at an ephemeral port.
+The redirect URI must be exactly `http://127.0.0.1:<port>`: no trailing slash,
+path or `localhost`. Authorization uses S256 PKCE (32 random bytes for the
+verifier) and a random state (16 bytes). Wrong-state and non-root requests
+do not settle the login. Abort, timeout and callback completion close the server.
+
+Upsun only creates API tokens within 5 minutes of a login, so the authorize
+request carries `max_age=300`. If token creation still returns a 401
+`insufficient_user_authentication` step-up challenge (RFC 9470), Lando repeats
+the browser login once with the challenge's `max_age` and `amr` (space-separated,
+like the Upsun CLI).
+
+After authorization, Lando reads `/me`, creates `Lando (<hostname>)` and
+immediately caches the API token, before cloning or syncing can fail. Every
+refresh token is revoked best-effort after exchange, including when
+token creation fails. OAuth clients are not cached; they expire server-side.
+Only the named API token is retained locally, and no credential secrets are printed.
+
+Enter skips login and failures fall back to pasting an API token. Escape must
+not skip: it leaves typed text in readline's buffer for the next password prompt.
+Known usernames get the Console URL `/-/users/<encoded-username>/settings/tokens`;
+otherwise the fallback is `/-/users/me/settings`, where the user selects API Tokens.
+There is no username-free tokens deep link. Hidden login questions use the same
+answer name as `--upsun-auth` / `--auth`, so explicit flags bypass them.
 
 Pull and push expose authentication, environment, project, relationship, mount,
 `--skip-db`, `--skip-files` and `-A/--app` options. Pull also exposes

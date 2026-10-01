@@ -14,6 +14,14 @@ The commands use a cached API token or one passed with `--auth`; an explicitly
 passed token is validated and cached for next time.
 The `--auth` picker also offers the token saved on disk in your `upsun` or `platform`
 CLI's default session, labeled `upsun CLI token` or `platform CLI token`.
+The account picker for `lando pull`, `lando push` and `lando switch` offers
+**Log in with your browser** and **Paste an API token**, even when no tokens
+are cached. Browser login creates and immediately saves a token named
+`Lando (<hostname>)`, which you can revoke in the Console's API Tokens tab.
+Press **Enter** to skip browser login and paste a token; any login failure
+also falls back to pasting. Over SSH or in a remote shell, skip browser login
+because your browser can't reach Lando's local callback. Passing `--auth API_TOKEN`
+bypasses these prompts.
 If validation rejects a selected cached token, Lando removes it from its token and
 app authentication caches and warns you to run the command again with a new token.
 

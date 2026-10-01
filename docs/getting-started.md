@@ -28,14 +28,24 @@ for you:
 
 ```bash
 # Flex
-lando init --source upsun --upsun-auth API_TOKEN --upsun-site my-project
+lando init --source upsun
 
 # Fixed
-lando init --source platformsh --upsun-auth API_TOKEN --upsun-site my-project
+lando init --source platformsh
 ```
 
-Omit the flags to be prompted. Create an API token in the Upsun Console under
-*My profile → API tokens*.
+Choose **Log in with your browser** (the default when no tokens are cached) to
+create an API token named `Lando (<hostname>)`. Upsun only creates tokens
+right after a login, so it may ask you to log in again even if you're already
+signed in. Lando saves the token for next time;
+you can revoke it in the Upsun Console under *My profile → API tokens*.
+Press **Enter** during browser login to skip it and paste a token instead.
+If login fails, Lando offers the paste prompt automatically.
+
+Over SSH or in a remote shell, your browser can't reach Lando's local callback.
+Skip browser login and paste a token from the Console instead.
+For non-interactive init, pass `--upsun-auth API_TOKEN --upsun-site my-project`
+with either source; `--upsun-auth` bypasses browser login and the token prompts.
 
 If the project is already checked out and linked, initialize from the current
 directory:

@@ -1,5 +1,6 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+* Added a browser login to `lando init` and the `lando pull`/`push`/`switch` account picker that creates an API token for you. Press Enter to skip it and paste a token instead.
 * Added `lando switch <environment>` to check out an Upsun environment's branch and pull its databases and mounts.
 * Removed cached API tokens that Upsun rejects, and offered the token saved by the `upsun`/`platform` CLI in the `--auth` picker.
 * Declared optional `@lando/*` service plugin version floors and warned when a needed plugin is missing or older than the bundled version tables.
