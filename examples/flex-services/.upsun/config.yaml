@@ -1,0 +1,56 @@
+applications:
+  app:
+    type: php:8.3
+    relationships:
+      rabbitmq: "rabbitmq:rabbitmq"
+      influxdb: "influxdb:influxdb"
+      kafka: "kafka:kafka"
+      opensearch: "opensearch:opensearch"
+      cache: "cache:redis"
+      solr: "solr:solr"
+      database: "db:admin"
+      reports: "db:reporter"
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+          index: [index.php]
+
+services:
+  rabbitmq:
+    type: rabbitmq:3.13
+  influxdb:
+    type: influxdb:2.7
+  kafka:
+    type: kafka:3.9.1
+  opensearch:
+    type: opensearch:2
+  cache:
+    type: redis-persistent:7.2
+  solr:
+    type: solr:9.9
+    configuration:
+      cores:
+        collection1: {}
+      endpoints:
+        solr:
+          core: collection1
+  db:
+    type: postgresql:16
+    configuration:
+      databases: [main, reports]
+      endpoints:
+        admin:
+          default_database: main
+          privileges:
+            main: admin
+        reporter:
+          default_database: reports
+          privileges:
+            reports: ro
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"

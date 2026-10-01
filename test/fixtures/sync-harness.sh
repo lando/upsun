@@ -1,12 +1,7 @@
 #!/bin/bash
-# Source the shared sync helper with stubbed lando loggers for unit tests.
 set -e
-lando_pink() { echo "PINK $*" >&2; }
-lando_green() { echo "GREEN $*" >&2; }
-lando_yellow() { echo "YELLOW $*" >&2; }
-lando_red() { echo "RED $*" >&2; }
-lando_info() { echo "INFO $*" >&2; }
-lando_warn() { echo "WARN $*" >&2; }
+
+export UPSUN_LOG_HELPER="$(dirname "$0")/log.sh"
 
 . "$(dirname "$0")/../../scripts/upsun-sync-env.sh"
 
@@ -20,9 +15,12 @@ case "$mode" in
     echo "PROJECT=${PLATFORM_PROJECT:-}"
     echo "BRANCH=${PLATFORM_BRANCH:-}"
     echo "NO_PARENT=${UPSUN_SYNC_NO_PARENT:-}"
+    echo "FORCE=${UPSUN_SYNC_FORCE:-}"
     echo "ENV_EXPLICIT=${UPSUN_SYNC_ENV_EXPLICIT:-}"
     echo "RELS=${PLATFORM_SYNC_RELATIONSHIPS[*]}"
     echo "MOUNTS=${PLATFORM_SYNC_MOUNTS[*]}"
+    echo "ALL_MOUNTS=${UPSUN_SYNC_ALL_MOUNTS:-}"
+    echo "APP=${UPSUN_SYNC_APP:-}"
     ;;
   ensure)
     PLATFORM_BRANCH="$1"

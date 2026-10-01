@@ -1,0 +1,9 @@
+applications:
+  app:
+    type: composable:26.05
+    stack: ["python@3.12", "ruby@3.3", curl]
+services: {}
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: app:http

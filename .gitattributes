@@ -9,3 +9,6 @@
 *.ini text eol=lf
 *.php text eol=lf
 *.vcl text eol=lf
+
+# Fixtures are read byte-for-byte by tests (!include, !archive), so never convert their line endings.
+test/fixtures/** -text

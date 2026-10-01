@@ -1,49 +1,127 @@
 ---
-description: Learn how to get started with the Lando Upsun Fixed recipe.
+title: Getting Started
+description: Start an Upsun project locally with Lando.
 ---
 
 # Getting Started
 
-## Requirements
+## From an existing checkout
 
-1. [Installed Lando](https://docs.lando.dev/getting-started/installation.html)
-2. A **Fixed** project (`.platform.app.yaml` and/or `.platform/applications.yaml`)
-3. An Upsun Fixed API token (`PLATFORMSH_CLI_TOKEN`) for init/pull/push
-4. Landofile `config.id` set to the Fixed project ID (written by `lando init`); git branch matching the remote environment
+Add a Landofile next to `.upsun/` (Flex), or next to `.platform.app.yaml` /
+`.platform/` (Fixed):
 
-Flex projects (`.upsun/config.yaml`) are rejected until Phase 3.
-
-## Quick Start
+```yaml
+name: my-project
+recipe: upsun
+config:
+  id: PROJECT_ID   # optional; otherwise read from .upsun/local/project.yaml
+```
 
 ```bash
-# Interactive clone (Fixed)
+lando start
+```
+
+## From Upsun
+
+`lando init` clones the project with the Upsun CLI and writes the Landofile
+for you:
+
+```bash
+# Flex
 lando init --source upsun
 
-# Non-interactive
-lando init \
-  --source upsun \
-  --upsun-auth "$PLATFORMSH_CLI_TOKEN" \
-  --upsun-site "$PLATFORMSH_SITE_NAME"
-
-# Deprecated aliases still work
-lando init \
-  --source platformsh \
-  --platformsh-auth "$PLATFORMSH_CLI_TOKEN" \
-  --platformsh-site "$PLATFORMSH_SITE_NAME"
-
-# Already have Fixed code locally
-cd /path/to/repo
-lando init --source cwd --recipe upsun
-
-lando start
-lando pull -r database -m web/sites/default/files
-lando info
+# Fixed
+lando init --source platformsh
 ```
 
-Inside the app container the CLI is still `platform`:
+Choose **Log in with your browser** (the default when no tokens are cached) to
+create an API token named `Lando (<hostname>)`. Upsun only creates tokens
+right after a login, so it may ask you to log in again even if you're already
+signed in. Lando saves the token for next time;
+you can revoke it in the Upsun Console under *My profile → API tokens*.
+Press **Enter** during browser login to skip it and paste a token instead.
+If login fails, Lando offers the paste prompt automatically.
+
+Over SSH or in a remote shell, your browser can't reach Lando's local callback.
+Skip browser login and paste a token from the Console instead.
+For non-interactive init, pass `--upsun-auth API_TOKEN --upsun-site my-project`
+with either source; `--upsun-auth` bypasses browser login and the token prompts.
+
+If the project is already checked out and linked, initialize from the current
+directory:
 
 ```bash
-lando platform auth:info
+lando init --source cwd
 ```
 
-Remote dashboard variables are not pulled automatically. Set them locally as before.
+This reads `config.id` from `.upsun/local/project.yaml` (or
+`.platform/local/project.yaml` for Fixed). Run `upsun project:set-remote` or
+clone with `upsun get` first if that local project file does not exist.
+
+## Pull data
+
+```bash
+lando pull
+```
+
+You are asked which database relationships and mounts to import. See
+[Syncing](./sync.md).
+
+## What you get
+
+Given this `.upsun/config.yaml`:
+
+```yaml
+applications:
+  app:
+    type: php:8.3
+    relationships:
+      database: "db:mysql"
+      redis:
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+services:
+  db:
+    type: mariadb:11.4
+  redis:
+    type: redis:7.2
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"
+```
+
+`lando start` creates `app` (PHP 8.3 + nginx), `db` (MariaDB 11.4), `redis`
+(Redis 7.2) and `mailpit`. It serves `https://my-project.lndo.site` and the
+Mailpit UI at `http://mail.my-project.lndo.site`. The app sees:
+
+```bash
+$ lando exec app -- env | grep -E '^(PLATFORM_APPLICATION_NAME|DATABASE_URL|REDIS_URL)='
+DATABASE_URL=mysql://upsun:upsun@db:3306/main
+PLATFORM_APPLICATION_NAME=app
+REDIS_URL=redis://redis:6379
+```
+
+PostgreSQL relationships use the same predictable credentials, for example
+`pgsql://upsun:upsun@db:5432/main`.
+
+Tooling is generated from the config: `lando php`, `lando composer`,
+`lando database` (MariaDB shell), `lando redis`, `lando upsun`, `lando pull`,
+`lando push`. See [Tooling](./tooling.md).
+
+## Drupal
+
+The [Upsun Drupal scaffold](https://github.com/upsun/drupal-scaffold) works
+out of the box: `composer install` runs as the build flavor, `.environment`
+provides `drush` and `DRUSH_OPTIONS_URI`, `settings.platformsh.php` reads
+`PLATFORM_RELATIONSHIPS` for the database and Redis, and the deploy hook runs
+`drush updatedb` / `config-import` on every start.
+
+```bash
+lando start
+lando drush site:install -y
+lando drush uli
+```

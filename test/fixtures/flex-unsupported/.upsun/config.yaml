@@ -1,0 +1,5 @@
+applications:
+  app:
+    type: "java:21"
+    source:
+      root: "/"

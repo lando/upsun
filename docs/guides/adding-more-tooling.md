@@ -1,12 +1,7 @@
 ---
 title: Adding more tooling commands
-description: Learn how to add additional tooling commands to your Lando Platform.sh site.
+description: Add tooling commands to your Lando Upsun project.
 guide: true
-mailchimp:
-  action: https://dev.us12.list-manage.com/subscribe/post?u=59874b4d6910fa65e724a4648&amp;id=613837077f
-  title: Want more Platfrom.sh guide content?
-  byline: Signup and we will send you a weekly blog digest of similar content to keep you satiated.
-  button: Sign me up!
 ---
 
 While Lando will set up tooling routes for the _obvious_ utilities for each application `type` it tries to not overwhelm the user with _all the commands_ by providing a minimally useful set. It does this because it is very easy to specify more tooling commands in your Landofile.
@@ -33,7 +28,7 @@ tooling:
 
 ```
 
-Note that the `service` should match the `name` of your application in the associated `.platform.app.yaml`. Very often this is just `app`.
+Note that the `service` should match the name of your application in `.upsun/config.yaml` (or `.platform.app.yaml`). Very often this is just `app`.
 
 Now run `lando` again and see that extra commands!
 
@@ -63,4 +58,4 @@ If you are not sure whether something exists inside your application container o
 lando ssh -c "yarn"
 ```
 
-Also note that Lando tooling is hyper-powerful so you might want to [check out](https://docs.lando.dev/core/v3/tooling.html) some of its more advanced features.
+Also note that Lando tooling is hyper-powerful so you might want to [check out](https://docs.lando.dev/landofile/tooling.html) some of its more advanced features.

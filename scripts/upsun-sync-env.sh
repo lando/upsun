@@ -1,29 +1,25 @@
 #!/bin/bash
-#
-# Shared Fixed sync helpers for lando pull / lando push.
-#
-# CLI contract (Upsun Fixed docs):
-#   binary: platform   (NOT upsun)
-#   token:  PLATFORMSH_CLI_TOKEN   (NOT UPSUN_CLI_TOKEN)
-#   resume:   platform environment:resume     (paused)
-#   activate: platform environment:activate   (inactive)
+set -e
+
+. "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
+# Shared Upsun Flex and Fixed sync helpers for lando pull / lando push.
+# The injected binary and token variable select the CLI for the detected project.
 #
 # Prefer waking the current git-branch (or --env) environment. Parent fallback
 # only when wake fails and the user did not opt out (--no-parent or explicit --env).
 
-UPSUN_PLATFORM_BIN="${UPSUN_PLATFORM_BIN:-platform}"
+UPSUN_CLI_BINARY="${UPSUN_CLI_BINARY:-platform}"
+UPSUN_CLI_TOKEN_VAR="${UPSUN_CLI_TOKEN_VAR:-PLATFORMSH_CLI_TOKEN}"
 
-# Run the Fixed CLI as-is (no implied -p).
 upsun_platform_raw() {
-  "$UPSUN_PLATFORM_BIN" "$@"
+  "$UPSUN_CLI_BINARY" "$@"
 }
 
-# Run the Fixed CLI, adding -p when PLATFORM_PROJECT is set.
 upsun_platform() {
   if [ -n "${PLATFORM_PROJECT:-}" ]; then
-    "$UPSUN_PLATFORM_BIN" "$@" -p "$PLATFORM_PROJECT"
+    "$UPSUN_CLI_BINARY" "$@" -p "$PLATFORM_PROJECT"
   else
-    "$UPSUN_PLATFORM_BIN" "$@"
+    "$UPSUN_CLI_BINARY" "$@"
   fi
 }
 
@@ -40,7 +36,7 @@ upsun_append_csv() {
 
 # Parse pull/push argv. Sets:
 #   PLATFORM_AUTH, PLATFORM_PROJECT, PLATFORM_BRANCH (if --env)
-#   UPSUN_SYNC_NO_PARENT, UPSUN_SYNC_ENV_EXPLICIT
+#   UPSUN_SYNC_NO_PARENT, UPSUN_SYNC_ENV_EXPLICIT, UPSUN_SYNC_ALL_MOUNTS, UPSUN_SYNC_APP
 #   PLATFORM_SYNC_RELATIONSHIPS, PLATFORM_SYNC_MOUNTS
 upsun_parse_sync_args() {
   PLATFORM_SYNC_RELATIONSHIPS=()
@@ -72,6 +68,26 @@ upsun_parse_sync_args() {
         upsun_append_csv PLATFORM_SYNC_MOUNTS "$2"
         shift 2
         ;;
+      --all-mounts)
+        UPSUN_SYNC_ALL_MOUNTS=1
+        shift
+        ;;
+      --skip-db)
+        PLATFORM_SYNC_RELATIONSHIPS=(none)
+        shift
+        ;;
+      --skip-files)
+        PLATFORM_SYNC_MOUNTS=(none)
+        shift
+        ;;
+      -A=*|--app=*)
+        UPSUN_SYNC_APP="${1#*=}"
+        shift
+        ;;
+      -A|--app)
+        UPSUN_SYNC_APP="$2"
+        shift 2
+        ;;
       -e=*|--env=*|--environment=*)
         PLATFORM_BRANCH="${1#*=}"
         UPSUN_SYNC_ENV_EXPLICIT=1
@@ -94,18 +110,25 @@ upsun_parse_sync_args() {
         UPSUN_SYNC_NO_PARENT=1
         shift
         ;;
+      --force)
+        UPSUN_SYNC_FORCE=1
+        shift
+        ;;
       --)
         shift
         break
-        ;;
-      -*|--*=)
-        shift
         ;;
       *)
         shift
         ;;
     esac
   done
+  UPSUN_SYNC_APP="${UPSUN_SYNC_APP:-${PLATFORM_APPLICATION_NAME:-}}"
+}
+
+upsun_app_args() {
+  [ -n "${UPSUN_SYNC_APP:-}" ] && printf -- '-A\n%s\n' "$UPSUN_SYNC_APP"
+  return 0
 }
 
 # Export PLATFORM_PROJECT and point the CLI at it (set-remote + env).
@@ -114,11 +137,10 @@ upsun_bind_project() {
     return 0
   fi
   export PLATFORM_PROJECT
-  lando_pink "Using Fixed project $PLATFORM_PROJECT..."
+  lando_pink "Using project $PLATFORM_PROJECT..."
   upsun_platform_raw project:set-remote -y "$PLATFORM_PROJECT" >/dev/null 2>&1 || true
 }
 
-# True when $1 is in the active-environment list.
 upsun_env_is_active() {
   local branch="$1"
   upsun_platform env -I --pipe | grep -Fx "$branch" >/dev/null
@@ -132,17 +154,16 @@ upsun_env_status() {
     | tr -d '[:space:]'
 }
 
-# Wake a paused or inactive environment. Returns 0 on CLI success.
 upsun_try_wake_env() {
   local branch="$1"
   local status="$2"
   case "$status" in
     paused)
-      lando_pink "Environment $branch is paused; resuming with platform environment:resume..."
+      lando_pink "Environment $branch is paused; resuming with $UPSUN_CLI_BINARY environment:resume..."
       upsun_platform environment:resume -e "$branch" -y
       ;;
     inactive)
-      lando_pink "Environment $branch is inactive; activating with platform environment:activate..."
+      lando_pink "Environment $branch is inactive; activating with $UPSUN_CLI_BINARY environment:activate..."
       upsun_platform environment:activate -e "$branch" -y
       ;;
     *)

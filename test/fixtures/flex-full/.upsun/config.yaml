@@ -1,0 +1,91 @@
+applications:
+  app:
+    type: php:8.4
+    source:
+      root: ''
+    relationships:
+      database: "db:admin"
+      reports: "db:reporter"
+      cache: redis
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: true
+      commands:
+        post_start: echo post
+    hooks:
+      deploy: echo deploy
+    operations:
+      hello:
+        commands:
+          start: echo operation-ran
+    timezone: Europe/Paris
+    additional_hosts:
+      example.internal: 127.0.0.1
+    variables:
+      php:
+        memory_limit: 256M
+        session:
+          save_handler: redis
+    runtime:
+      extensions: [xsl, blackfire]
+    dependencies:
+      python:
+        yq: '3.4.3'
+      ruby:
+        rake: '*'
+      php:
+        phpunit/phpunit: '^11'
+    workers:
+      queue:
+        commands:
+          start: php worker.php
+    crons:
+      tick:
+        spec: '* * * * *'
+        commands:
+          start: date > web/tick.txt
+  api:
+    type: nodejs:22
+    source:
+      root: api
+    web:
+      commands:
+        pre_start: echo pre
+        start: node server.js
+        post_start: echo post
+services:
+  db:
+    type: mariadb:11.4
+    configuration:
+      schemas: [main, legacy]
+      endpoints:
+        admin:
+          default_schema: main
+          privileges:
+            main: admin
+            legacy: admin
+        reporter:
+          default_schema: legacy
+          privileges:
+            legacy: ro
+  redis:
+    type: redis:7.2
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"
+    redirects:
+      paths:
+        "/old":
+          to: "/new"
+        "/gone":
+          to: "https://example.com/"
+          code: 302
+  "https://api.{default}/":
+    type: upstream
+    upstream: "api:http"
+  "https://www.{default}/":
+    type: redirect
+    to: "https://{default}/"

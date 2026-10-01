@@ -1,65 +1,77 @@
 'use strict';
 
-// Modules
-const _ = require('lodash');
+const {RUNTIME_TYPES} = require('./lib/mapping/runtimes');
+const {getAccountInfo} = require('./lib/api');
+const {detect} = require('./lib/config/detect');
+const tokens = require('./lib/tokens');
 const utils = require('./lib/utils');
 
-/*
- * Stuff
+const APP_TYPES = new Set(Object.values(RUNTIME_TYPES));
+const REJECTED_STATUSES = new Set([400, 401, 403]);
+
+/**
+ * Register CLI authentication and SSH hooks.
+ *
+ * @param {object} lando Lando instance.
+ * @returns {void}
  */
 module.exports = lando => {
-  // Sanitize auth flags (new + deprecated alias)
-  lando.log.alsoSanitize('platformsh-auth');
   lando.log.alsoSanitize('upsun-auth');
+  lando.log.alsoSanitize('platformsh-auth');
 
-  /*
-   * This event makes sure that tooling and event commands that are run against an app container
-   * are run through /helpers/upsun-exec.sh first so they get the needed envvars eg HOME, USER, and PLATFORM_* set
-   */
-  lando.events.on('pre-command-runner', app => {
-    if (utils.isUpsunRecipe(_.get(app, 'config.recipe'))) {
-      // This is a cheap way to get the list of platform appservers
-      // @TODO: will node, python, etc appserver still use `web`?
-      const appCache = lando.cache.get(`${app.name}.compose.cache`) || {};
-      const appservers = _(appCache.info).filter(info => info.meUser === 'web').map('service').value();
+  for (const command of ['pull', 'push', 'switch']) {
+    lando.events.on(`cli-${command}-answers`, async data => {
+      const app = data?.options?._app;
+      if (!app || !utils.isUpsunRecipe(app.recipe)) return;
+      if (!data.options.auth) return;
+      let vendor = app.upsun?.cli?.vendor;
+      if (!vendor) {
+        try {
+          vendor = detect(app.root).flavor === 'fixed' ? 'platformsh' : 'upsun';
+        } catch {
+          // Cached tooling can run before the builder or without readable project config.
+          vendor = 'upsun';
+        }
+      }
+      const cached = tokens.readTokens(lando, vendor).find(entry => entry.token === data.options.auth);
+      if (!cached) return;
+      try {
+        await getAccountInfo(cached.token);
+      } catch (error) {
+        // Only a rejected token (invalid_grant on exchange, 401/403 on /me) is scrubbed;
+        // an outage or offline host must not throw away a good token.
+        if (!REJECTED_STATUSES.has(error.status)) return;
+        tokens.removeToken(lando, cached.token, vendor);
+        const key = `${app.name}.meta.cache`;
+        const meta = lando.cache.get(key);
+        if (meta?.token === cached.token) {
+          const next = {...meta};
+          delete next.token;
+          delete next.email;
+          lando.cache.set(key, next, {persist: true});
+        }
+        lando.cache.remove(`${app.name}.tooling.cache`);
+        delete data.options.auth;
+        lando.log.warn('the cached Upsun API token for %s is invalid; it has been removed. ' +
+          'Run the command again to enter a new token.', cached.email);
+      }
+    });
+  }
 
-      // Loop through the tooling
-      _.forEach(app.config.tooling, (tooling, name) => {
-        // Standardize and arrayify tooling
-        const cmd = tooling.cmd ? tooling.cmd : tooling.name;
-        const cmds = (!_.isArray(cmd)) ? [cmd] : cmd;
-        // Reset tooling
-        tooling.cmd = utils.setPshExec(cmds, tooling.service, appservers);
-      });
-
-      // Loop through the events
-      _.forEach(app.config.events, (event, name) => {
-        app.config.events[name] = utils.setPshExec(event, 'app', appservers);
-      });
-    }
-  });
-
-  /*
-   * Same as above but we do something special for SSH
-   */
+  // lando ssh should behave like an Upsun SSH session: .environment sourced
   lando.events.on('cli-ssh-run', data => {
-    if (utils.isUpsunRecipe(_.get(data, 'options._app.recipe'))) {
-      // Reset the default from appserver to the closest app
-      if (data.options.service === 'appserver') {
-        // Reset the default service from appserver to whatever the closest application service is
-        const app = _.get(data, 'options._app', {});
-        const defaultSshService = _.get(app, 'tooling.platform.service', 'app');
-        data.options.service = defaultSshService;
-        data.options.s = defaultSshService;
-      }
-
-      // Reset the default command if needed
-      if (!_.has(data, 'options.command')) {
-        data.options.command = 'if ! type bash > /dev/null; then sh; else bash; fi';
-      }
-
-      // Wrap commands in /helpers/upsun-exec.sh (still unsets PLATFORM_* for `platform` CLI)
-      data.options.command = ['/helpers/upsun-exec.sh', '/bin/sh', '-c', data.options.command];
+    const app = data?.options?._app;
+    if (!app || !utils.isUpsunRecipe(app.recipe)) return;
+    // The task default is a literal "appserver"; send it to the primary (closest app) service instead
+    const hasAppserver = (app.info || []).some(service => service.service === 'appserver');
+    if (data.options.service === 'appserver' && !hasAppserver && app.primary) {
+      data.options.service = app.primary;
+      data.options.s = app.primary;
     }
+    // Only app containers carry the Upsun environment; the bash wrapper also fails on bash-less images (mailpit)
+    const target = (app.info || []).find(service => service.service === data.options.service);
+    if (target && !APP_TYPES.has(target.type)) return;
+    const command = data.options.command || 'if ! type bash > /dev/null; then sh; else bash; fi';
+    data.options.command = ['/helpers/upsun-exec.sh', '/bin/sh', '-c', command];
   });
 };

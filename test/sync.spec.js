@@ -7,20 +7,20 @@ const {execFileSync} = require('child_process');
 const chai = require('chai');
 chai.should();
 
-const {getPlatformPull} = require('../lib/pull');
-const {getPlatformPush} = require('../lib/push');
+const {getPullTask} = require('../lib/pull');
+const {getPushTask} = require('../lib/push');
+const describeLinux = require('./helpers/describe-linux');
 
 const harness = path.join(__dirname, 'fixtures', 'sync-harness.sh');
 const mockPlatform = path.join(__dirname, 'fixtures', 'mock-platform.sh');
 const pullSrc = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'upsun-pull.sh'), 'utf8');
 const pushSrc = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'upsun-push.sh'), 'utf8');
 const helperSrc = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'upsun-sync-env.sh'), 'utf8');
-const builderSrc = fs.readFileSync(path.join(__dirname, '..', 'recipes', 'upsun', 'builder.js'), 'utf8');
-
-const closestApp = {
-  syncableRelationships: {database: {}},
-  mounts: {'web/sites/default/files': {}},
+const model = {
+  applications: {app: {relationships: {database: {service: 'db'}}, mounts: {'/files': {}}}},
+  services: {db: {type: {service: 'mariadb'}}},
 };
+const cli = {binary: 'platform', tokenVar: 'PLATFORMSH_CLI_TOKEN', vendor: 'platformsh', projectId: 'proj123'};
 
 /**
  * Run the bash sync harness.
@@ -34,23 +34,18 @@ function runHarness(args, extraEnv = {}) {
     encoding: 'utf8',
     env: {
       ...process.env,
-      UPSUN_PLATFORM_BIN: mockPlatform,
+      UPSUN_CLI_BINARY: mockPlatform,
+      UPSUN_CLI_TOKEN_VAR: 'PLATFORMSH_CLI_TOKEN',
+      UPSUN_LOG_HELPER: path.join(__dirname, 'fixtures', 'log.sh'),
       ...extraEnv,
     },
   });
 }
 
-describe('Fixed pull/push contract', () => {
-  it('keeps the platform binary and PLATFORMSH_CLI_TOKEN', () => {
-    helperSrc.should.match(/UPSUN_PLATFORM_BIN="\$\{UPSUN_PLATFORM_BIN:-platform\}"/);
-    helperSrc.should.match(/PLATFORMSH_CLI_TOKEN/);
-    helperSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
-    pullSrc.should.match(/export PLATFORMSH_CLI_TOKEN=/);
-    pushSrc.should.match(/export PLATFORMSH_CLI_TOKEN=/);
-    pullSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
-    pushSrc.should.not.match(/\$\{?UPSUN_CLI_TOKEN\}?/);
-    pullSrc.should.not.match(/(^|[^-\w])upsun auth/);
-    pushSrc.should.not.match(/(^|[^-\w])upsun auth/);
+describe('pull/push shell contract', () => {
+  it('selects the injected CLI binary and token variable', () => {
+    helperSrc.should.match(/UPSUN_CLI_BINARY="\$\{UPSUN_CLI_BINARY:-platform\}"/);
+    helperSrc.should.match(/UPSUN_CLI_TOKEN_VAR/);
   });
 
   it('unsets PLATFORM_RELATIONSHIPS and PLATFORM_APPLICATION during sync', () => {
@@ -68,16 +63,13 @@ describe('Fixed pull/push contract', () => {
     helperSrc.should.match(/PLATFORM_PROJECT="\$2"/);
   });
 
-  it('wires Landofile id into PLATFORM_PROJECT on pull/push', () => {
-    builderSrc.should.match(/PLATFORM_PROJECT: projectId/);
-    builderSrc.should.match(/_app\.id/);
-    builderSrc.should.match(/config\.config\.id/);
+  it('binds the selected project through the CLI', () => {
     helperSrc.should.match(/project:set-remote/);
     helperSrc.should.match(/-p "\$PLATFORM_PROJECT"/);
   });
 });
 
-describe('upsun_parse_sync_args', () => {
+describeLinux('upsun_parse_sync_args', () => {
   it('parses space-form relationship and mount flags', () => {
     const out = runHarness(['parse', '-r', 'database', '-m', 'web/sites/default/files']);
     out.should.match(/RELS=database/);
@@ -100,11 +92,12 @@ describe('upsun_parse_sync_args', () => {
     out.should.match(/MOUNTS=tmp private/);
   });
 
-  it('parses --project, --env, and --no-parent', () => {
-    const out = runHarness(['parse', '--project', 'abc123', '--env', 'feat', '--no-parent']);
+  it('parses --project, --env, --no-parent, and --force', () => {
+    const out = runHarness(['parse', '--project', 'abc123', '--env', 'feat', '--no-parent', '--force']);
     out.should.match(/PROJECT=abc123/);
     out.should.match(/BRANCH=feat/);
     out.should.match(/NO_PARENT=1/);
+    out.should.match(/FORCE=1/);
     out.should.match(/ENV_EXPLICIT=1/);
   });
 
@@ -112,9 +105,70 @@ describe('upsun_parse_sync_args', () => {
     runHarness(['parse', '--auth', 'tok-space']).should.match(/AUTH=tok-space/);
     runHarness(['parse', '--auth=tok-eq']).should.match(/AUTH=tok-eq/);
   });
+
+  it('parses --all-mounts, --skip-db, --skip-files and --app', () => {
+    const out = runHarness(['parse', '--all-mounts', '--skip-db', '--skip-files', '--app', 'api']);
+    ['ALL_MOUNTS=1', 'RELS=none', 'MOUNTS=none', 'APP=api'].forEach(value => out.should.include(value));
+    ['-A=web', '--app=web'].forEach(arg => runHarness(['parse', arg]).should.match(/APP=web/));
+  });
+
+  it('defaults the app to PLATFORM_APPLICATION_NAME', () => {
+    runHarness(['parse'], {PLATFORM_APPLICATION_NAME: 'app'}).should.match(/APP=app/);
+  });
+
+  it('leaves relationships and mounts empty when -r / -m are omitted', () => {
+    const out = runHarness(['parse']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('keeps a literal none for -r / -m so the sync step can skip it', () => {
+    const out = runHarness(['parse', '-r', 'none', '-m', 'none']);
+    out.should.match(/^RELS=none$/m);
+    out.should.match(/^MOUNTS=none$/m);
+  });
+
+  it('skips empty -r / -m values', () => {
+    const out = runHarness(['parse', '-r', '', '-m', '']);
+    out.should.match(/^RELS=$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
+
+  it('splits comma-separated -r / -m values', () => {
+    const out = runHarness(['parse', '-r', 'database,migrate', '-m', 'tmp,private']);
+    out.should.match(/^RELS=database migrate$/m);
+    out.should.match(/^MOUNTS=tmp private$/m);
+  });
+
+  it('parses -e / -p short forms and lets a later --environment win', () => {
+    const out = runHarness(['parse', '-p', 'proj9', '-e', 'feat', '--environment', 'other']);
+    out.should.match(/^PROJECT=proj9$/m);
+    out.should.match(/^BRANCH=other$/m);
+    out.should.match(/^ENV_EXPLICIT=1$/m);
+  });
+
+  it('ignores unknown flags and leftover positionals', () => {
+    const out = runHarness(['parse', 'positional', '-r', 'database', '--wat', '-m', 'tmp']);
+    out.should.match(/^RELS=database$/m);
+    out.should.match(/^MOUNTS=tmp$/m);
+  });
+
+  it('stops parsing after --', () => {
+    const out = runHarness(['parse', '-r', 'database', '--', '--mount=tmp']);
+    out.should.match(/^RELS=database$/m);
+    out.should.match(/^MOUNTS=$/m);
+  });
 });
 
-describe('upsun_ensure_active_environment', () => {
+describe('sync source contracts', () => {
+  it('uses gzip dumps, app arguments and tether guards', () => {
+    pullSrc.should.match(/(?=[\s\S]*db:dump .*--gzip)(?=[\s\S]*gunzip -c)(?=[\s\S]*UPSUN_TETHERED)/);
+    pushSrc.should.match(/UPSUN_TETHERED/);
+    helperSrc.should.match(/upsun_app_args\(\)/);
+  });
+});
+
+describeLinux('upsun_ensure_active_environment', () => {
   /**
    * Run ensure with a fresh mock log.
    *
@@ -238,7 +292,7 @@ describe('upsun_ensure_active_environment', () => {
   });
 });
 
-describe('upsun_bind_project', () => {
+describeLinux('upsun_bind_project', () => {
   it('records project:set-remote in the bind-mode mock log', () => {
     const log = path.join(os.tmpdir(), `mock-platform-bind-${process.pid}-${Date.now()}.log`);
     try {
@@ -255,23 +309,17 @@ describe('upsun_bind_project', () => {
 });
 
 describe('pull/push tooling options', () => {
-  const app = {
-    id: 'proj123',
-    meta: {email: 'dev@example.com', token: 'abc'},
-    platformsh: {closestApp, tokens: []},
-  };
-
-  it('defaults --project to Landofile id and exposes --env', () => {
-    const pull = getPlatformPull('app', app);
-    pull.options.project.default.should.equal('proj123');
+  it('uses the new model-based task APIs and exposes sync flags', () => {
+    const pull = getPullTask(model, 'app', cli, [{email: 'dev@example.com', token: 'abc'}]);
     pull.options.project.passthrough.should.equal(true);
     pull.options.env.passthrough.should.equal(true);
     pull.options['no-parent'].passthrough.should.equal(true);
-    pull.options.auth.describe.should.match(/PLATFORMSH_CLI_TOKEN/);
+    pull.env.PLATFORM_PROJECT.should.equal('proj123');
+    pull.env.UPSUN_CLI_BINARY.should.equal('platform');
 
-    const push = getPlatformPush('app', app);
-    push.options.project.default.should.equal('proj123');
+    const push = getPushTask(model, 'app', cli, []);
     push.options.env.alias.should.eql(['e']);
     push.options.project.alias.should.eql(['p']);
+    push.options.force.boolean.should.equal(true);
   });
 });

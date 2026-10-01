@@ -1,0 +1,4 @@
+mysql:
+  type: mariadb:10.6
+redis:
+  type: redis:7.2

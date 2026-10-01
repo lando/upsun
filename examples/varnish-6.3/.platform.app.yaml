@@ -1,9 +1,0 @@
-name: app
-type: "php:7.3"
-build:
-  flavor: none
-web:
-  locations:
-    "/":
-      root: "."
-      passthru: "/index.php"

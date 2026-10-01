@@ -1,23 +1,17 @@
-# We don't need this because its in the package.json
-# but we set it anyway just to make sure we know what is what
 name: "@lando/upsun"
 
-# Let lando autoscan this plugin for "legacy" plugin stuff needed for v3
+# Lando 3 autoscans builders/, inits/, scripts/ and app.js for legacy plugins
 legacy: true
 
-# This is just metadata that something else can use to understand how the docs are organized
 docs:
-  # This is the tag we should use when connecting upsun content together
   tag: upsun
-
-  # This gets added to the lando/lando docs guides.json
   guides:
-    title: Upsun (Fixed)
+    title: Upsun
     collapsable: true
     children:
       "docs/guides/adding-more-tooling": upsun/adding-more-tooling
-
-  # This gets added to the lando/lando docs config.js
+      "docs/guides/external-access": upsun/external-access
+      "docs/guides/manually-importing-databases": upsun/manually-importing-databases
   config:
     recipes:
       "upsun": ./docs/config.md

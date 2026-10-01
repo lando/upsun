@@ -1,0 +1,3 @@
+applications:
+  ignored:
+    type: php:8.4

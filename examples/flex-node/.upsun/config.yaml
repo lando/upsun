@@ -1,0 +1,31 @@
+applications:
+  api:
+    type: nodejs:22
+    relationships:
+      database: "db:postgresql"
+    mounts:
+      "/tmp-data":
+        source: storage
+        source_path: data
+    web:
+      commands:
+        pre_start: echo pre-start > pre.txt
+        start: node server.js
+        post_start: echo post-start > post.txt
+      upstream:
+        socket_family: tcp
+    hooks:
+      build: |
+        echo "built $(node -v)" > build.log
+    variables:
+      env:
+        GREETING: hello
+
+services:
+  db:
+    type: postgresql:16
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "api:http"

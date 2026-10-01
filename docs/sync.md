@@ -1,133 +1,113 @@
 ---
-description: Sync databases, files, relationships and mounts between local Lando and a remote Upsun Fixed environment.
+title: Syncing
+description: Pull databases and mounts from Upsun, or push them back.
 ---
 
 # Syncing
 
-`lando pull` and `lando push` copy **database relationships** and **mounts** between your local Lando app and a remote **Upsun Fixed** environment.
+`lando pull` and `lando push` use the Upsun CLI inside the app container to
+move databases and mounts between your local app and a remote environment.
 
-::: warning Fixed CLI contract
-This plugin talks to Fixed with the **`platform`** binary and **`PLATFORMSH_CLI_TOKEN`**. That is the official Fixed CLI contract. Do not switch sync to `upsun` or `UPSUN_CLI_TOKEN`.
+## Authentication
 
-Flex (`.upsun/config.yaml`) is a hard abort. Flex sync is not this phase.
-:::
+The commands use a cached API token or one passed with `--auth`; an explicitly
+passed token is validated and cached for next time.
+The `--auth` picker also offers the token saved on disk in your `upsun` or `platform`
+CLI's default session, labeled `upsun CLI token` or `platform CLI token`.
+The account picker for `lando pull`, `lando push` and `lando switch` offers
+**Log in with your browser** and **Paste an API token**, even when no tokens
+are cached. Browser login creates and immediately saves a token named
+`Lando (<hostname>)`, which you can revoke in the Console's API Tokens tab.
+Press **Enter** to skip browser login and paste a token; any login failure
+also falls back to pasting. Over SSH or in a remote shell, skip browser login
+because your browser can't reach Lando's local callback. Passing `--auth API_TOKEN`
+bypasses these prompts.
+If validation rejects a selected cached token, Lando removes it from its token and
+app authentication caches and warns you to run the command again with a new token.
 
-::: warning Not live-proven here
-Pull/push are **in progress**. Unit tests cover flag parsing, project-id wiring, and resume/activate fallback. They are **not** an E2E proof. A live `PLATFORMSH_CLI_TOKEN` run is still required before calling this E2E.
-:::
+| Flavor | CLI | Token variable |
+|---|---|---|
+| Flex | `upsun` | `UPSUN_CLI_TOKEN` |
+| Fixed | `platform` | `PLATFORMSH_CLI_TOKEN` |
 
-Only database relationships are syncable.
-
-## CLI and project id
-
-| Thing | Value |
-| --- | --- |
-| Binary inside the app container | `platform` |
-| Token | `PLATFORMSH_CLI_TOKEN` (or `lando pull --auth`) |
-| Project id | Landofile `config.id`, then `--project`, then `platform project:info` / `.platform/local/project.yaml` |
-| Environment id | Current git branch, or `--env` |
-
-`lando init --source upsun` writes `config.id`. Pull/push export that as `PLATFORM_PROJECT`, call `platform project:set-remote`, and pass `-p` on Fixed CLI calls so sync does not depend on auto-detect alone.
-
-Git branch should match the remote Fixed environment id. Override with `--env` when it does not.
-
-During pull/push the scripts **unset** `PLATFORM_RELATIONSHIPS` and `PLATFORM_APPLICATION` so `platform` talks to the remote site instead of localhost.
-
-## Inactive and paused environments
-
-If the target environment is not in the active list (`platform env -I`):
-
-1. Read `platform environment:info status`
-2. **paused** → `platform environment:resume -y`
-3. **inactive** → `platform environment:activate -y`
-4. Only if that fails (or is not allowed) fall back to the environment's **parent**
-5. After wake or parent switch, the chosen branch must appear in `platform env -I` (parent is woken if paused/inactive) or pull/push fails
-6. `--no-parent` or an explicit `--env` disables parent fallback (fail instead)
-
-Push still refuses production (`master`), including after a parent fallback.
-
-## Pulling
+## Pull
 
 ```bash
 lando pull
-
-Pull relationships and/or mounts from the remote Fixed environment
-
-Options:
-  --help              Shows lando or delegated command help if applicable
-  --verbose, -v       Runs with extra verbosity
-  --auth              Upsun Fixed API token (PLATFORMSH_CLI_TOKEN)
-  --mount, -m         A mount to download
-  --relationship, -r  A relationship to import
-  --env, -e           Remote Fixed environment ID
-  --project, -p       Fixed project ID
-  --no-parent         Do not fall back to the parent environment
+lando pull -r database -m /web/files
+lando pull -r none -m none --env staging
 ```
+
+| Option | Meaning |
+|---|---|
+| `-r`, `--relationship` | Database relationship to import (repeatable). `none` skips databases. |
+| `-m`, `--mount` | Mount to download (repeatable). `none` skips mounts. |
+| `-e`, `--env` | Remote environment. Defaults to your git branch. |
+| `-p`, `--project` | Remote project. Defaults to `config.id`. |
+| `--auth` | API token. |
+| `--no-parent` | Do not fall back to the parent environment. |
+| `--all-mounts` | Pull every remote mount into `PLATFORM_APP_DIR`. Pull only. |
+| `--skip-db` | Skip database sync. Equivalent to `-r none`. |
+| `--skip-files` | Skip mount sync. Equivalent to `-m none`. |
+| `-A`, `--app` | Remote Upsun application. Defaults to `PLATFORM_APPLICATION_NAME`. |
+
+Each database is dumped with `db:dump --gzip`. The compressed dump is streamed
+through `gunzip` into the local service the relationship points at, using the
+`<RELATIONSHIP>_HOST` variables. Mounts are downloaded with `mount:download`
+into the mount path under `/app`.
+
+If the remote environment is paused it is resumed; if it is inactive it is
+activated. If that fails and `--env` was not given, the parent environment is
+used instead.
+
+## Push
 
 ```bash
-# Interactively pull relationships and mounts
-lando pull
-
-# Import one remote database relationship and one Drupal files mount
-lando pull -r database -m web/sites/default/files
-
-# Space-form and equals-form both work
-lando pull --relationship database --mount=web/sites/default/files
-
-# Multiple relationships and mounts
-lando pull -r database -r migrate -r readonly -m tmp -m private
-
-# Pull -m SOURCE:TARGET = remote mount SOURCE downloaded into local TARGET
-lando pull -m tmp:/var/www/tmp -m private:/somewhere/else
-
-# Pull -r RELATIONSHIP:SCHEMA = remote relationship imported into local schema
-lando pull -r admin:legacy
-
-# Skip mounts or do nothing
-lando pull -r database -m none
-lando pull -r none -m none
-
-# Target a specific env / project
-lando pull --env feat --project PROJECTID -r database
+lando push -r database -m /web/files --env feature-x
 ```
 
-## Pushing
+The database, mount, environment, project, app and skip options also apply to
+`push`; `--all-mounts` is pull-only. Push writes a plain SQL dump because it is
+streamed to `db:sql`. Pushing to the production environment (type `production`,
+or branch `main`/`master`) is refused without `--force`.
+
+In tethered mode, both commands skip databases with a warning because those
+relationships already point at Upsun. Mount sync still runs.
+
+## Switch
 
 ```bash
-lando push
-
-Push relationships and/or mounts to the remote Fixed environment
-
-Options:
-  --help              Shows lando or delegated command help if applicable
-  --verbose, -v       Runs with extra verbosity
-  --auth              Upsun Fixed API token (PLATFORMSH_CLI_TOKEN)
-  --mount, -m         A mount to push up
-  --relationship, -r  A relationship to push up
-  --env, -e           Remote Fixed environment ID
-  --project, -p       Fixed project ID
-  --no-parent         Do not fall back to the parent environment
+lando switch feature-x -r database -m /web/files
+lando switch feature-x --skip-db --skip-files
 ```
 
-```bash
-# Interactively push relationships and mounts
-lando push
+`lando switch <environment>` checks out the git branch for a remote environment,
+then pulls its databases and mounts. **Pulling replaces your selected local data.**
+The environment ID is required. Your `.lando.yml` is restored if the target
+branch has none; an existing Landofile on that branch is left alone.
 
-# Export one local database relationship and one Drupal files mount
-lando push -r database -m web/sites/default/files
+| Option | Meaning |
+|---|---|
+| `-r`, `--relationship` | Database relationship to import (repeatable). `none` skips databases. |
+| `-m`, `--mount` | Mount to download (repeatable). `none` skips mounts. |
+| `-p`, `--project` | Remote project. Defaults to `config.id`. |
+| `--auth` | API token. |
+| `-A`, `--app` | Remote Upsun application. Defaults to `PLATFORM_APPLICATION_NAME`. |
+| `--skip-db` | Skip database sync. |
+| `--skip-files` | Skip mount sync. Use both skip flags for checkout only. |
+| `--no-parent` | Disable parent fallback (already disabled by the explicit environment). |
 
-# Multiple relationships and mounts
-lando push -r database -r migrate -r readonly -m tmp -m private
+There is no `--env` or `--all-mounts` option for switch. In tethered mode,
+databases are skipped, but mounts can still be pulled. Run `lando restart`
+after switching so the tether reconnects to the selected environment.
+Switch does not reconnect the tether itself.
 
-# Push -m SOURCE:TARGET = local SOURCE uploaded into remote mount TARGET
-lando push -m tmp:/var/www/tmp -m private:/somewhere/else
+Adobe Commerce Cloud projects cannot use `lando switch`; use the
+`magento-cloud` CLI instead.
 
-# Push -r RELATIONSHIP:SCHEMA = local schema exported into that remote schema
-lando push -r admin:legacy -r admin:main
+## Adobe Commerce Cloud
 
-# Skip relationships or do nothing
-lando push -r none -m tmp
-lando push -r none -m none
-```
-
-Pushing to `master` is blocked.
+`lando pull`, `lando push` and `lando switch` are not available for `.magento.app.yaml`
+projects. They exit 1 with a message; use the `magento-cloud` CLI to move data.
+For a local dump, `lando db-import` and `lando db-export` still work. See
+[Tooling](./tooling.md#database-import-and-export).

@@ -1,0 +1,74 @@
+applications:
+  app:
+    type: php:8.3
+    source:
+      root: backend
+    relationships:
+      database: "db:admin"
+      reports: "db:reporter"
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+    hooks:
+      build: |
+        echo build-hook > web/hook.txt
+    workers:
+      queue:
+        commands:
+          start: php worker.php
+    operations:
+      hello:
+        role: admin
+        commands:
+          start: echo operation-ran
+    timezone: Europe/Paris
+    additional_hosts:
+      example.internal: 127.0.0.1
+    variables:
+      php:
+        memory_limit: 256M
+        session:
+          save_handler: files
+  api:
+    type: nodejs:22
+    source:
+      root: api
+    relationships:
+      database: "db:admin"
+      backend: "app:http"
+    web:
+      commands:
+        start: node server.js
+
+services:
+  db:
+    type: mariadb:11.4
+    configuration:
+      schemas: [main, legacy]
+      endpoints:
+        admin:
+          default_schema: main
+          privileges:
+            main: admin
+            legacy: admin
+        reporter:
+          default_schema: legacy
+          privileges:
+            legacy: ro
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"
+    redirects:
+      paths:
+        "/old":
+          to: "/new"
+  "https://api.{default}/":
+    type: upstream
+    upstream: "api:http"
+  "https://www.{default}/":
+    type: redirect
+    to: "https://{default}/"

@@ -1,16 +1,29 @@
-## Unreleased
+## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
-* Phase-2 Fixed pull/push: resume/activate paused or inactive envs before parent fallback; re-check `platform env -I` after wake or parent switch (wake parent if paused/inactive, else fail); wire Landofile `config.id` as `PLATFORM_PROJECT` / `-p` / `project:set-remote`; fix space-form `-r`/`-m`; add `--env` / `--project` / `--no-parent`. Still needs a live `PLATFORMSH_CLI_TOKEN` before E2E.
-* Packaging hygiene: Node 20, flat ESLint, `docs:mvb` / Netlify preview split, docs and node-version CI, VitePress 1.5+ for the theme. Leia stays quarantined.
-
-## v1.0.0-alpha.0 - [September 4, 2026](https://github.com/AaronFeledy/upsun)
-
-* Rebrand package/recipe to `@lando/upsun` / `upsun` (deprecated `platformsh` alias).
-* Fixed-only: Flex (`.upsun/config.yaml`) is a hard error until Phase 3.
-* Token cache `upsun.tokens` with read-old-write-new from `platformsh.tokens`.
-* Keep `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `platformsh-client@0.1.230` (auth path, code).
-* OPEN / `PLATFORM_RELATIONSHIPS` runtime deferred until a live Docker proof.
-* Seed: lando/platformsh tip `9f3bda60ec14cfd72abd3aa92ec0ba04fc73a5c0` (50 commits ahead of tag `v0.10.0`; seed `package.json` said `0.9.0`).
+* Added a browser login to `lando init` and the `lando pull`/`push`/`switch` account picker that creates an API token for you. Press Enter to skip it and paste a token instead.
+* Added `lando switch <environment>` to check out an Upsun environment's branch and pull its databases and mounts.
+* Removed cached API tokens that Upsun rejects, and offered the token saved by the `upsun`/`platform` CLI in the `--auth` picker.
+* Declared optional `@lando/*` service plugin version floors and warned when a needed plugin is missing or older than the bundled version tables.
+* Documented arm64 support for compose-only services and how to pin an image tag when an Upsun version has no matching Docker tag.
+* Renamed the plugin to `@lando/upsun` and the recipe to `upsun`. `recipe: platformsh` and the `--platformsh-auth` / `--platformsh-site` init options still work as deprecated aliases, and saved `platformsh.tokens` are picked up automatically.
+* Added Upsun Flex (`.upsun/config.yaml`) alongside Upsun Fixed (`.platform.app.yaml` + `.platform/`), including multiple applications and composable images.
+* Added Adobe Commerce Cloud projects (`.magento.app.yaml` + `.magento/`) with `MAGENTO_CLOUD_*` variables. `lando pull`, `lando push` and `lando tether` aren't available for them.
+* Replaced the frozen `docker.registry.platform.sh` images with Lando's own service plugins and official upstream images.
+* Mapped services onto Lando's MariaDB, MySQL, PostgreSQL, Redis, Memcached, MongoDB, Solr, Elasticsearch and Varnish plugins, and official images for OpenSearch, Valkey, RabbitMQ, Kafka, InfluxDB, ClickHouse, Chrome Headless, Gotenberg, Mercure, Chroma and Qdrant.
+* Provisioned MariaDB, MySQL and PostgreSQL schemas, endpoint users and grants, and added relationships between applications.
+* Set the `PLATFORM_*` runtime variables the way Upsun does. Landofile `env_file` values override `variables.env`.
+* Ran mounts, database setup, `pre_start`, `post_start`, `deploy` and `post_deploy` on every start in Upsun's order. A failing hook makes `lando start` exit nonzero.
+* Added PHP extension and `php.ini` handling, `variables.php`, declared dependencies, workers, and an nginx sidecar for non-PHP `web.locations` and static sites.
+* Served routes on hosts based on the Landofile `name`, with real redirects including `redirects.paths`. Exact hosts win over wildcard routes, and `config.domains` gives `{all}` routes one local host per domain.
+* Added Mailpit for outgoing mail. Set `config.mail: false` to turn it off.
+* Added an opt-in cron sidecar through `config.crons`, plus `lando cron <name>` and `lando operation <name>`.
+* Added `lando db-import`, `lando db-export`, and `lando xdebug-on` / `lando xdebug-off`.
+* Added `--skip-db`, `--skip-files` and `-A/--app` to `lando pull` and `lando push`, `--all-mounts` to `lando pull`, and gzip-compressed database dumps.
+* Added tether mode through `config.tethered` and `lando tether`, which connects your local app to a remote environment's services.
+* Read the project ID from the local Upsun project file and supported `lando init` from an existing checkout.
+* Installed the matching CLI (`upsun` with `UPSUN_CLI_TOKEN` for Flex, `platform` with `PLATFORMSH_CLI_TOKEN` for Fixed) and verified CLI, Node.js and Supercronic downloads against published checksums.
+* Dropped the `platformsh-client` dependency for a direct API call, so `lando init` now reports a bad API token instead of hanging, and updated `tar`, `js-yaml` and `lodash` to clear known security advisories.
+* Rewrote the docs and added Leia-tested examples for Flex, Fixed, multi-app, composable, static, services and Adobe Commerce projects.
 
 ## v0.10.0 - [March 8, 2024](https://github.com/lando/platformsh/releases/tag/v0.10.0)
   * Updated to latest database services.
