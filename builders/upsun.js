@@ -22,6 +22,7 @@ const {resolveCli, getCliEnv, getInstallStep} = require('../lib/cli');
 const {getPullTask} = require('../lib/pull');
 const {getPushTask} = require('../lib/push');
 const {getSwitchTask} = require('../lib/switch');
+const login = require('../lib/login');
 const {readLocalProjectId} = require('../lib/project');
 const {getStartCommands} = require('../lib/hooks');
 const tokens = require('../lib/tokens');
@@ -192,6 +193,7 @@ module.exports = {
       const closestType = closestDef ? String(closestDef.type).split(':')[0] : undefined;
       const dir = path.posix.join('/app', closest.sourceRoot);
       const cliRef = {...cli, projectId, environment: branch};
+      const browserLogin = () => login.promptBrowserLogin({lando: app._lando, vendor: cli.vendor});
       const appTooling = closestDef ? {
         ...tooling.getLanguageTooling(closestApp, closestType, {dir}),
         ...tooling.getComposerTooling(closestApp, dir, getComposerPackages(path.join(root, closest.sourceRoot)), {dir}),
@@ -209,9 +211,9 @@ module.exports = {
           env: cliEnv,
         },
         ...(model.layout === 'magento' ? tooling.getMagentoTooling(closestApp) : {
-          'pull': getPullTask(model, closestApp, cliRef, cachedTokens),
-          'push': getPushTask(model, closestApp, cliRef, cachedTokens),
-          'switch <environment>': getSwitchTask(model, closestApp, cliRef, cachedTokens),
+          'pull': getPullTask(model, closestApp, cliRef, cachedTokens, browserLogin),
+          'push': getPushTask(model, closestApp, cliRef, cachedTokens, browserLogin),
+          'switch <environment>': getSwitchTask(model, closestApp, cliRef, cachedTokens, browserLogin),
         }),
       } : {};
 
