@@ -28,14 +28,14 @@ describe('auth', () => {
     options.auth.interactive.choices.should.deep.equal([
       {name: 'second@example.com', value: 'second'},
       {name: 'first@example.com', value: 'first'},
-      {name: 'add or refresh a token', value: 'more'},
+      {name: 'Paste an API token', value: 'more'},
     ]);
     options['api-token'].hidden.should.equal(true);
     options['api-token'].interactive.should.include({
       name: 'auth',
       type: 'password',
       message: 'Enter an Upsun API token',
-      weight: 101,
+      weight: 102,
     });
   });
 
@@ -50,12 +50,55 @@ describe('auth', () => {
   it('always requests a token and skips selection for empty or omitted token lists', () => {
     for (const options of [getAuthOptions({}, []), getAuthOptions()]) {
       options.auth.interactive.choices.should.deep.equal([
-        {name: 'add or refresh a token', value: 'more'},
+        {name: 'Paste an API token', value: 'more'},
       ]);
       for (const answers of [{auth: 'abc'}, {auth: 'more'}, {}, undefined, null]) {
         options.auth.interactive.when(answers).should.equal(false);
         options['api-token'].interactive.when(answers).should.equal(true);
       }
     }
+  });
+
+  it('offers browser login before pasting when no accounts are cached', () => {
+    const options = getAuthOptions({}, [], async () => 'created');
+    options.auth.interactive.when({}).should.equal(true);
+    options.auth.interactive.choices.should.eql([
+      {name: 'Log in with your browser', value: 'browser'}, {name: 'Paste an API token', value: 'more'},
+    ]);
+    options['api-token'].interactive.when({}).should.equal(false);
+    options['api-token'].interactive.when({auth: 'more'}).should.equal(true);
+    options['browser-login'].hidden.should.equal(true);
+    options['browser-login'].interactive.should.include({name: 'auth', weight: 101});
+  });
+
+  for (const result of ['created', undefined]) {
+    it(`routes browser login to ${result ? 'the created token' : 'pasting'} when selected`, async () => {
+      const options = getAuthOptions({}, [], async () => result);
+      const answers = {auth: 'browser'};
+      (await options['browser-login'].interactive.when(answers)).should.equal(false);
+      answers.auth.should.equal(result || 'more');
+      options['api-token'].interactive.when(answers).should.equal(!result);
+    });
+  }
+
+  it('does not call browser login when another account or paste is selected', async () => {
+    let calls = 0;
+    const options = getAuthOptions({}, [{email: 'dev@example.com', token: 'cached'}], async () => {
+      calls++;
+      return 'created';
+    });
+    options.auth.interactive.choices[0].value.should.equal('cached');
+    for (const auth of ['cached', 'more', undefined]) {
+      const answers = {auth};
+      (await options['browser-login'].interactive.when(answers)).should.equal(false);
+      chai.expect(answers.auth).to.equal(auth);
+    }
+    calls.should.equal(0);
+  });
+
+  it('keeps cached-account authentication non-interactive even with a login callback', () => {
+    const options = getAuthOptions({email: 'dev@example.com', token: 'cached'}, [], async () => 'created');
+    options.should.have.all.keys('auth');
+    options.auth.default.should.equal('cached');
   });
 });
