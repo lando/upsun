@@ -39,7 +39,6 @@ case "${1:-}" in
     lando_green "Xdebug enabled (mode $mode)"
     ;;
   off)
-    mkdir -p "$CONF_DIR"
     printf 'xdebug.mode=off\n' > "$MODE_INI"
     reload_fpm
     lando_green "Xdebug disabled"
