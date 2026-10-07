@@ -106,7 +106,7 @@ Runs `operations.<name>.commands.start` once from the app directory with
 
 ## Xdebug
 
-PHP apps get runtime toggles for web requests:
+PHP apps get toggles that apply to web requests and `lando php` alike:
 
 ```bash
 lando xdebug-on          # mode defaults to debug
@@ -114,8 +114,11 @@ lando xdebug-on develop,debug
 lando xdebug-off
 ```
 
-The command reloads PHP-FPM. CLI PHP keeps the `XDEBUG_MODE` value from the
-Landofile/container environment.
+`xdebug-on` loads the extension if needed, writes the mode to
+`/usr/local/etc/php/conf.d/zzz-upsun-xdebug.ini` and reloads PHP-FPM;
+`xdebug-off` sets the mode to `off` the same way. The container keeps the
+toggle until `lando rebuild`, which restores the starting mode. See
+[Debugging with Xdebug](./guides/xdebug.md) for IDE setup.
 
 ## Crons
 

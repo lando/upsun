@@ -15,7 +15,7 @@ recipe: upsun
 config:
   id: null          # remote project ID; otherwise read from the local project file
   app: null         # closest application override for a multi-app project
-  xdebug: false     # initial Xdebug setting for PHP services
+  xdebug: null      # Xdebug mode for PHP apps; null follows runtime.xdebug.idekey
   build: []         # extra build steps on the closest app
   run: []           # extra run steps on the closest app; once per rebuild
   overrides: {}     # merged into the raw Upsun app/service config before mapping
@@ -60,12 +60,13 @@ See [Adobe Commerce Cloud](#adobe-commerce-cloud).
 | `operations` | Adds `lando operation <name>` for `operations.<name>.commands.start`. |
 | `timezone` | Sets `TZ` on app, worker and cron containers. |
 | `additional_hosts` | Adds each `host:ip` pair to app, worker and cron containers. |
-| `runtime.extensions`, `runtime.disabled_extensions` | Installs or disables PHP extensions during rebuild. |
+| `runtime.extensions`, `runtime.disabled_extensions` | Installs or disables PHP extensions during rebuild. Extensions the Lando image ships but leaves off, such as `xdebug`, are enabled rather than reinstalled. |
+| `runtime.xdebug.idekey` | Loads Xdebug with that IDE key. See [Debugging with Xdebug](./guides/xdebug.md). |
 | `dependencies.nodejs` | Installs global npm packages; PHP apps also get Node.js. |
 | `dependencies.php` | Installs global Composer packages; `composer/composer` preserves exact versions or selects a major. |
 | `dependencies.python`, `python2`, `python3` | Installs user-level pip packages on Python apps; other runtimes warn and skip them. |
 | `dependencies.ruby` | Installs gems. |
-| `variables.php` | Generates a PHP ini fragment. Nested keys use dot notation. |
+| `variables.php` | Generates a PHP ini fragment. Nested keys use dot notation; `xdebug.*` keys apply too. |
 | `<source.root>/php.ini` | Linked to `/usr/local/etc/php/conf.d/zzz-upsun-app.ini` when present. |
 | `build.flavor` | PHP defaults to the Upsun composer flavor; Node.js defaults to `npm install`; `none` skips the flavor step. |
 
@@ -297,8 +298,8 @@ Fixed project. Mixing it with `.upsun/` or `.platform*` files is an error.
 `config.overrides` is keyed by Upsun application or service name and is merged
 into that raw Upsun configuration **before** it is turned into Lando services.
 Use it to change what the recipe reads without editing `.upsun/` or
-`.platform*`, for example to bump a runtime version or add a local-only PHP
-extension:
+`.platform*`, for example to bump a runtime version, add a local-only PHP
+extension or set a local-only PHP ini value:
 
 ```yaml
 config:
@@ -306,7 +307,10 @@ config:
     app:
       type: "php:8.4"
       runtime:
-        extensions: [xdebug]
+        extensions: [imagick]
+      variables:
+        php:
+          xdebug.client_port: 9004
     db:
       type: "mariadb:11.4"
 ```

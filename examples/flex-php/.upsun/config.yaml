@@ -32,6 +32,8 @@ applications:
           start: date > /app/web/tick.txt
     runtime:
       extensions: [xsl]
+      xdebug:
+        idekey: LANDO
     variables:
       env:
         FOO: bar

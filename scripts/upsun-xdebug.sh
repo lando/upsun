@@ -4,11 +4,14 @@ set -e
 # shellcheck disable=SC1090
 . "${UPSUN_LOG_HELPER:-/helpers/log.sh}"
 
+# The app container runs with an empty XDEBUG_MODE, so this ini decides the mode for php-fpm and the CLI.
+# Reloading php-fpm re-executes the master process, which is when Xdebug reads the mode.
 CONF_DIR="${UPSUN_PHP_CONF_DIR:-/usr/local/etc/php/conf.d}"
-FPM_POOL_DIR="${UPSUN_FPM_POOL_DIR:-/usr/local/etc/php-fpm.d}"
+PHP_BIN="${UPSUN_PHP_BIN:-php}"
 EXT_ENABLE="${UPSUN_PHP_EXT_ENABLE:-docker-php-ext-enable}"
 PGREP="${UPSUN_PGREP:-pgrep}"
 KILL="${UPSUN_KILL:-kill}"
+MODE_INI="$CONF_DIR/zzz-upsun-xdebug.ini"
 
 reload_fpm() {
   local pid
@@ -27,18 +30,17 @@ case "${1:-}" in
       lando_red "Invalid Xdebug mode: $mode"
       exit 2
     fi
-    mkdir -p "$CONF_DIR" "$FPM_POOL_DIR"
-    "$EXT_ENABLE" xdebug
-    printf 'xdebug.mode=%s\n' "$mode" > "$CONF_DIR/zzz-upsun-xdebug.ini"
-    printf '[www]\nenv[XDEBUG_MODE]=%s\n' "$mode" > "$FPM_POOL_DIR/zzz-upsun-xdebug.conf"
+    mkdir -p "$CONF_DIR"
+    if ! "$PHP_BIN" -m | grep -qix xdebug; then
+      "$EXT_ENABLE" xdebug
+    fi
+    printf 'xdebug.mode=%s\n' "$mode" > "$MODE_INI"
     reload_fpm
     lando_green "Xdebug enabled (mode $mode)"
     ;;
   off)
-    rm -f \
-      "$CONF_DIR/zzz-upsun-xdebug.ini" \
-      "$CONF_DIR/docker-php-ext-xdebug.ini" \
-      "$FPM_POOL_DIR/zzz-upsun-xdebug.conf"
+    mkdir -p "$CONF_DIR"
+    printf 'xdebug.mode=off\n' > "$MODE_INI"
     reload_fpm
     lando_green "Xdebug disabled"
     ;;

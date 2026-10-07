@@ -638,6 +638,18 @@ describe('builders/upsun', () => {
     expect(services.db.portforward).to.equal(3307);
   });
 
+  it('follows runtime.xdebug.idekey unless the Landofile sets config.xdebug', () => {
+    const root = fixture('flex-drupal');
+    const overrides = {app: {runtime: {xdebug: {idekey: 'PHPSTORM'}}}};
+    expect(build(root).instance.config.services.app.xdebug).to.equal(false);
+    const keyed = build(root, {}, {overrides}).instance.config.services.app;
+    expect(keyed.xdebug).to.equal('debug');
+    expect(fs.readFileSync(keyed.config.php, 'utf8')).to.include('xdebug.idekey = PHPSTORM');
+    expect(build(root, {}, {overrides, xdebug: false}).instance.config.services.app.xdebug).to.equal(false);
+    expect(build(root, {}, {xdebug: true}).instance.config.services.app.xdebug).to.equal('debug');
+    expect(keyed.overrides.environment.XDEBUG_MODE).to.equal('');
+  });
+
   it('applies raw config overrides before normalization and does not treat them as service merges', () => {
     const root = fixture('flex-drupal');
     const {instance} = build(root, {}, {
