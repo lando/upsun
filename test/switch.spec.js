@@ -20,7 +20,11 @@ const {expect} = require('chai');
 const {getSwitchTask} = require('../lib/switch');
 const {getPullTask} = require('../lib/pull');
 const {getMagentoTooling} = require('../lib/tooling');
+const recipe = require('../builders/upsun');
 const describeLinux = require('./helpers/describe-linux');
+const CoreCli = require('@lando/core/lib/cli');
+const {getInteractive} = require('@lando/core/lib/formatters');
+const yargs = require('yargs/yargs');
 
 const fixture = name => path.join(__dirname, 'fixtures', name);
 const script = path.join(__dirname, '..', 'scripts', 'upsun-switch.sh');
@@ -29,6 +33,23 @@ const model = {
   services: {db: {type: {service: 'mariadb'}}},
 };
 const cli = {binary: 'upsun', tokenVar: 'UPSUN_CLI_TOKEN', flavor: 'flex', projectId: 'proj', environment: 'old'};
+
+const buildTooling = (layout = 'flex-drupal') => {
+  const root = fixture(layout);
+  const app = {
+    name: 'switch-test', root, project: 'switch-test', upsun: {branch: 'main'},
+    _config: {domain: 'lndo.site', landoFile: '.lando.yml'},
+    _lando: {cache: {get: () => []}, config: {plugins: []}},
+    config: {recipe: 'upsun', config: {}},
+  };
+  const Recipe = recipe.builder(class {
+    constructor(id, config) {
+      this.id = id;
+      this.tooling = config.tooling;
+    }
+  }, recipe.config);
+  return new Recipe('upsun', {root, _app: app}).tooling;
+};
 
 describe('switch tooling', () => {
   it('excludes Fixed replica relationships from database choices', () => {
@@ -78,6 +99,147 @@ describe('switch tooling', () => {
     expect(result.stderr).to.include('magento-cloud');
   });
 
+  for (const layout of ['flex-drupal', 'fixed-magento']) {
+    it(`registers the appropriate switch command when building ${layout}`, () => {
+      const tooling = buildTooling(layout);
+      if (layout === 'fixed-magento') {
+        expect(tooling).not.to.have.property('switch [environment]');
+        expect(tooling.switch.cmd).to.equal(getMagentoTooling('app').switch.cmd);
+      } else {
+        expect(tooling['switch [environment]'].cmd).to.equal('/helpers/upsun-switch.sh');
+      }
+    });
+  }
+});
+
+describe('switch environment selection at the core boundary', () => {
+  const originalFetch = global.fetch;
+  let requests;
+  beforeEach(() => {
+    requests = [];
+    global.fetch = async (url, options) => {
+      requests.push({url, options});
+      return new Response(JSON.stringify(url.endsWith('/oauth2/token') ? {access_token: 'access'} : [
+        {id: 'main', title: 'Main', status: 'active', type: 'production'},
+        {id: 'feature', title: 'Feature', status: 'inactive', type: 'development'},
+      ]));
+    };
+  });
+  afterEach(() => global.fetch = originalFetch);
+
+  for (const status of [400, 401, 403]) {
+    it(`reports rejected tokens clearly for HTTP ${status}`, async () => {
+      global.fetch = async () => new Response(JSON.stringify({message: 'Denied'}), {status});
+      const task = getSwitchTask(model, 'app', cli);
+      const error = await task.options.environment.interactive.choices({auth: 'bad'}).catch(error => error);
+      expect(error.message).to.equal('Upsun rejected that API token. Run lando auth upsun again.');
+    });
+  }
+
+  it('includes project context for non-auth environment-list failures', async () => {
+    global.fetch = async () => new Response(JSON.stringify({message: 'Missing project'}), {status: 404});
+    const task = getSwitchTask(model, 'app', cli);
+    const error = await task.options.environment.interactive.choices({auth: 'token'}).catch(error => error);
+    expect(error.message).to.equal('Couldn\'t list environments for proj: Missing project');
+  });
+
+  // Use core's actual option/positional builder and formatter, including its early argv read.
+  const buildSwitch = () => buildTooling()['switch [environment]'];
+  const parse = (task, args) => {
+    const parser = yargs(args).help(false).version(false).exitProcess(false);
+    void parser.argv;
+    const command = CoreCli.prototype.parseToYargs.call({}, {
+      ...task, command: 'switch [environment]',
+    });
+    let parsed;
+    parser.command({...command, handler: argv => parsed = argv});
+    void parser.argv;
+    return parsed;
+  };
+
+  for (const cached of [false, true]) {
+    const shape = cached ? 'serialized' : 'live';
+    const inputs = [[], ['feature-x'], ['--environment', 'feature-x'], ['--env', 'feature-x'], ['-e', 'feature-x']];
+    for (const args of inputs) {
+      it(`only offers the picker with no environment (${shape} builder): ${args.join(' ')}`, async () => {
+        const task = buildSwitch();
+        const argv = parse(cached ? JSON.parse(JSON.stringify(task)) : task, ['switch', ...args]);
+        // Core reloads live app prompts after parsing cached tooling.
+        const question = getInteractive(task.options, argv).find(question => question.name === 'environment');
+        const answers = {auth: 'selected-token'};
+        expect(argv.environment).to.equal(args.length ? 'feature-x' : undefined);
+        expect(await question.when(answers)).to.equal(args.length === 0);
+        if (args.length) expect(answers.environment).to.equal('feature-x');
+        expect(requests).to.have.length(0);
+      });
+    }
+
+    it(`does not run environment inquiries or fetch for help (${shape} builder)`, () => {
+      const task = buildSwitch();
+      const command = CoreCli.prototype.parseToYargs.call({}, {
+        ...(cached ? JSON.parse(JSON.stringify(task)) : task), command: 'switch [environment]',
+      });
+      let ran = false;
+      let output;
+      const parser = yargs(['switch', '--help']).help(false).version(false).exitProcess(false);
+      void parser.argv;
+      parser.command({...command, handler: () => ran = true}).help()
+        .parse(['switch', '--help'], (error, argv, help) => {
+        expect(error).to.equal(undefined);
+        expect(argv.help).to.equal(true);
+        output = help;
+      });
+      expect(output).to.include('switch [environment]');
+      expect(ran).to.equal(false);
+      expect(requests).to.have.length(0);
+    });
+  }
+
+  it('lists all environments with the selected token and project, retaining IDs as values', async () => {
+    const task = {...buildSwitch(), ...getSwitchTask(model, 'app', cli)};
+    const argv = parse(task, ['switch', '--project', 'chosen']);
+    const answers = {auth: 'selected-token'};
+    const questions = getInteractive(task.options, argv).sort((a, b) => a.weight - b.weight);
+    for (const question of questions.filter(question => question.name === 'project')) await question.when(answers);
+    const question = questions.find(question => question.name === 'environment');
+    const choices = await question.choices(answers);
+    expect(choices.map(choice => choice.value)).to.deep.equal(['main', 'feature']);
+    expect(choices[0].name).to.include('Main').and.include('main');
+    expect(JSON.parse(requests[0].options.body).api_token).to.equal('selected-token');
+    expect(requests[1].url).to.equal('https://api.upsun.com/projects/chosen/environments');
+  });
+
+  it('uses the configured project when none was selected', async () => {
+    await getSwitchTask(model, 'app', cli).options.environment.interactive.choices({auth: 'selected-token'});
+    expect(requests[1].url).to.equal('https://api.upsun.com/projects/proj/environments');
+  });
+
+  it('copies the app-cached auth default into answers before listing environments', async () => {
+    const account = {email: 'cached@example.com', token: 'app-cached'};
+    const task = {...buildSwitch(), ...getSwitchTask(model, 'app', cli, [], undefined, account)};
+    const argv = parse(task, ['switch']);
+    expect(argv.auth).to.equal('app-cached');
+    const answers = {};
+    const questions = getInteractive(task.options, argv).sort((a, b) => a.weight - b.weight);
+    for (const question of questions.filter(question => question.name === 'auth')) await question.when(answers);
+    await questions.find(question => question.name === 'environment').choices(answers);
+    expect(JSON.parse(requests[0].options.body).api_token).to.equal('app-cached');
+  });
+
+  it('fails clearly without a project before fetching', async () => {
+    const task = getSwitchTask(model, 'app', {...cli, projectId: undefined});
+    const error = await task.options.environment.interactive.choices({auth: 'token'}).catch(error => error);
+    expect(error.message).to.match(/project.*--project/i);
+    expect(requests).to.have.length(0);
+  });
+
+  it('fails clearly when the project has no environments', async () => {
+    global.fetch = async url => new Response(JSON.stringify(url.endsWith('/oauth2/token') ?
+      {access_token: 'access'} : []));
+    const task = getSwitchTask(model, 'app', cli);
+    const error = await task.options.environment.interactive.choices({auth: 'token'}).catch(error => error);
+    expect(error.message).to.match(/no environments.*proj/i);
+  });
 });
 
 describeLinux('Upsun switch script', () => {

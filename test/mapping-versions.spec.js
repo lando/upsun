@@ -9,6 +9,7 @@ chai.should();
 const {resolveVersion, getSupportedVersions, getVersionTableStatus, VERSION_TABLES} =
   require('../lib/mapping/versions');
 const {toLandoWarning} = require('../lib/warnings');
+const recipe = require('../builders/upsun');
 
 describe('mapping versions', () => {
   it('falls back to frozen versions when an installed plugin reports no versions', () => {
@@ -101,6 +102,36 @@ describe('mapping versions', () => {
 
       result.url.should.equal(`https://docs.lando.dev/upsun/caveats.html#${code}`);
       result.title.should.not.equal(`Upsun: ${code}`);
+    });
+  }
+
+  for (const scenario of [
+    {name: 'local services need missing plugins', plugins: [],
+      expected: [['plugin-missing', 'mariadb'], ['plugin-missing', 'redis'], ['plugin-missing', 'php']]},
+    {name: 'the installed app plugin is outdated',
+      plugins: [{name: '@lando/php', dir: path.join(__dirname, 'fixtures/plugins/@lando/php')}],
+      expected: [['plugin-missing', 'mariadb'], ['plugin-missing', 'redis'], ['plugin-outdated', 'php']]},
+  ]) {
+    it(`surfaces only required plugin warnings when ${scenario.name}`, () => {
+      const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-version-builder-'));
+      const root = path.join(__dirname, 'fixtures/flex-drupal');
+      const app = {
+        name: 'test', root, project: 'version-status', envFiles: [],
+        _config: {domain: 'lndo.site', landoFile: '.lando.yml', userConfRoot: temporary},
+        _lando: {cache: {get: () => []}, config: {plugins: scenario.plugins, userConfRoot: temporary}},
+        config: {recipe: 'upsun', config: {}},
+        upsun: {branch: 'test'},
+      };
+      class MockRecipe {}
+      const Recipe = recipe.builder(MockRecipe, recipe.config);
+      try {
+        new Recipe('upsun', {root, _app: app});
+
+        app.upsun.warnings.filter(warning => warning.code.startsWith('plugin-'))
+            .map(warning => [warning.code, warning.data.landoType]).should.eql(scenario.expected);
+      } finally {
+        fs.rmSync(temporary, {recursive: true, force: true});
+      }
     });
   }
 
