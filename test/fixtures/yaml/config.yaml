@@ -1,0 +1,4 @@
+included: !include nested/data.yaml
+text: !include {path: text.txt, type: string}
+binary: !include {path: text.txt, type: binary}
+archive: !archive archive

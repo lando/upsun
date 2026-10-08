@@ -1,0 +1,17 @@
+applications:
+  app:
+    web:
+      locations:
+        "/":
+          scripts: false
+          passthru: true
+services:
+  db:
+    configuration:
+      endpoints:
+        admin:
+          default_schema: main
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: app:http

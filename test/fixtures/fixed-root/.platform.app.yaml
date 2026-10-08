@@ -7,3 +7,8 @@ web:
       passthru: "/index.php"
 relationships:
   database: "db:mysql"
+mounts:
+  "/web/sites/default/files": "shared:files/x"
+  "/private":
+    source: local
+    source_path: private

@@ -1,0 +1,5 @@
+name: frontend
+type: nodejs:20
+web:
+  commands:
+    start: npm start

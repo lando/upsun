@@ -1,0 +1,11 @@
+applications:
+  app:
+    type: nodejs:22
+    variables:
+      env:
+        FOO: from-app
+        BAR: from-app
+routes:
+  "https://{all}/":
+    type: upstream
+    upstream: app:http

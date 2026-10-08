@@ -1,0 +1,16 @@
+applications:
+  app:
+    type: php:8.3
+    relationships:
+      ghost: "nothere:http"
+  api:
+    type: nodejs:22
+    relationships:
+      backend: "app:http"
+    web:
+      commands:
+        start: node server.js
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"
