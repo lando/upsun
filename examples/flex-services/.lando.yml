@@ -1,0 +1,6 @@
+name: upsun-flex-services
+recipe: upsun
+services:
+  kafka:
+    overrides:
+      working_dir: /

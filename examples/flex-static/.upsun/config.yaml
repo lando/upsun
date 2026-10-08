@@ -1,0 +1,19 @@
+applications:
+  site:
+    type: nodejs:22
+    build:
+      flavor: none
+    web:
+      locations:
+        "/":
+          root: public
+          index: [index.html]
+          expires: 1h
+        "/private":
+          root: private
+          allow: false
+services: {}
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "site:http"

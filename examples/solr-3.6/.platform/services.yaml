@@ -1,9 +1,0 @@
-search:
-  type: solr:3.6
-  disk: 1024
-
-customcore:
-  type: solr:3.6
-  disk: 1024
-  configuration:
-    core_config: !archive "solr/conf/"

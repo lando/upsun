@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install node 20
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           registry-url: https://registry.npmjs.org
@@ -22,8 +22,18 @@ jobs:
         run: |
           VERSION=$(echo "$TAG_NAME" | sed 's/^v//')
           PACKAGE=$(node -p "require('./package.json').name")
-          npm dist-tag add "$PACKAGE@$VERSION" latest
-          echo "::notice title=Promoted $VERSION to latest::The latest tag now points to $VERSION (was edge-only)"
+          # The deploy job publishes on the "published" event; wait until npm sees it before tagging
+          for i in $(seq 1 30); do
+            if npm view "$PACKAGE@$VERSION" version >/dev/null 2>&1; then
+              npm dist-tag add "$PACKAGE@$VERSION" latest
+              echo "::notice title=Promoted $VERSION to latest::The latest tag now points to $VERSION (was edge-only)"
+              exit 0
+            fi
+            echo "Waiting for $PACKAGE@$VERSION on npm ($i/30)"
+            sleep 10
+          done
+          echo "::error title=Promotion failed::$PACKAGE@$VERSION did not appear on npm after 5 minutes"
+          exit 1
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
           NODE_AUTH_TOKEN: ${{secrets.NPM_DEPLOY_TOKEN}}
@@ -37,20 +47,20 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-22.04
+          - ubuntu-24.04
         node-version:
           - '20'
     steps:
       # Install deps and cache
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: https://registry.npmjs.org
       - name: Install NPM dependencies
-        run: npm clean-install --production --frozen-lockfile
+        run: npm clean-install --frozen-lockfile
 
       # Let's do tests rq just to make sure we dont push something that is fundamentally broken
       - name: Lint code

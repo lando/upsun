@@ -1,0 +1,21 @@
+name: app
+type: php:8.2
+relationships:
+  database: "db:postgresql"
+  cache: "memcache:memcached"
+disk: 1024
+mounts:
+  "/web/files":
+    source: local
+    source_path: files
+web:
+  locations:
+    "/":
+      root: "web"
+      passthru: "/index.php"
+hooks:
+  build: |
+    echo build-hook > web/hook.txt
+variables:
+  env:
+    FOO: fixed

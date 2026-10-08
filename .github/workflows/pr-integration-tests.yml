@@ -1,0 +1,62 @@
+name: Integration Tests (Examples)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  leia-tests:
+    runs-on: ${{ matrix.os }}
+    env:
+      TERM: xterm
+    strategy:
+      fail-fast: false
+      matrix:
+        leia-test:
+          - examples/flex-php
+          - examples/flex-node
+          - examples/fixed-php
+          - examples/fixed-magento
+          - examples/flex-services
+          - examples/flex-multiapp
+          - examples/flex-composable
+          - examples/flex-static
+        lando-version:
+          - 3-stable
+          - 3-edge
+        os:
+          - ubuntu-24.04
+        node-version:
+          - '20'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install node ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          registry-url: https://registry.npmjs.org
+      - name: Install NPM dependencies
+        run: npm clean-install --production
+      - name: Bundle Deps
+        uses: lando/prepare-release-action@v3
+        with:
+          lando-plugin: true
+          version: dev
+          sync: false
+      - name: Setup lando ${{ matrix.lando-version }}
+        uses: lando/setup-lando@v3
+        with:
+          lando-version: ${{ matrix.lando-version }}
+          config: |
+            setup.plugins.@lando/upsun=${{ github.workspace }}
+          telemetry: false
+      - name: Run Leia Tests
+        uses: lando/run-leia-action@v2
+        with:
+          # run-leia-action@v2 installs Node 18, and Leia 2.x needs require(esm) (Node 20.19+)
+          version: "1.0.0-beta.4"
+          leia-test: "./${{ matrix.leia-test }}/README.md"
+          cleanup-header: "Destroy tests"
+          shell: bash
+          stdin: true

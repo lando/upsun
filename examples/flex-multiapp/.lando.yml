@@ -1,0 +1,4 @@
+name: upsun-flex-multiapp
+recipe: upsun
+config:
+  app: app

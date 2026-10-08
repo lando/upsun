@@ -1,9 +1,0 @@
-vendor
-php.ini
-redis.so
-data
-*.sql
-*.tar.gz
-*.tar
-.DS_Store
-.platform/local
