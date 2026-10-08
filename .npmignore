@@ -1,5 +1,12 @@
 .github
+.vscode
+.idea
+coverage/
+.nyc_output/
+.omo/
+.codegraph/
+*.log
 docs
 examples
-guides
 test
+dev/

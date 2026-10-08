@@ -52,3 +52,5 @@ yarn.lock
 .stignore
 *.sync-conflict-*
 
+.codegraph/
+.omo/
