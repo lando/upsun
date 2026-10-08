@@ -1,0 +1,4 @@
+name: upsun-flex-php
+recipe: upsun
+config:
+  crons: true

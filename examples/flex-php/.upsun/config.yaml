@@ -1,0 +1,53 @@
+applications:
+  app:
+    type: php:8.3
+    relationships:
+      database: "db:mysql"
+      redis:
+    mounts:
+      "/web/files":
+        source: storage
+        source_path: files
+    web:
+      commands:
+        pre_start: echo pre-start > web/pre.txt
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+          index: [index.php]
+    hooks:
+      build: |
+        echo build-hook > web/hook.txt
+      deploy: |
+        echo deploy-hook > web/deploy.txt
+    crons:
+      hello:
+        spec: "*/5 * * * *"
+        commands:
+          start: echo cron-ran
+      tick:
+        spec: "* * * * *"
+        commands:
+          start: date > /app/web/tick.txt
+    runtime:
+      extensions: [xsl]
+    variables:
+      env:
+        FOO: bar
+      php:
+        memory_limit: 384M
+
+services:
+  db:
+    type: mariadb:11.4
+  redis:
+    type: redis:7.2
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"
+  "https://www.{default}/":
+    type: redirect
+    to: "https://{default}/"

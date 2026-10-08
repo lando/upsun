@@ -1,0 +1,20 @@
+applications:
+  app:
+    type: composable:26.05
+    stack:
+      runtimes:
+        - "php@8.4":
+            extensions: [redis, xsl]
+            disabled_extensions: [imap]
+        - "nodejs@22"
+      packages: [jq]
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+services: {}
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"

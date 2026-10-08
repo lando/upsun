@@ -1,0 +1,100 @@
+applications:
+  app:
+    type: php:8.3
+    relationships:
+      rabbitmq: "rabbitmq:rabbitmq"
+      influxdb: "influxdb:influxdb"
+      kafka: "kafka:kafka"
+      opensearch: "opensearch:opensearch"
+      cache: "cache:redis"
+      solr: "solr:solr"
+      database: "db:admin"
+      reports: "db:reporter"
+      valkey:
+        service: valkey
+        endpoint: valkey
+      maria_replica:
+        service: maria-replica
+        endpoint: main
+      pg_replica:
+        service: db-replica
+        endpoint: postgresql
+    web:
+      locations:
+        "/":
+          root: web
+          passthru: /index.php
+          index: [index.php]
+
+services:
+  rabbitmq:
+    type: rabbitmq:4.3
+  influxdb:
+    type: influxdb:2.7
+  kafka:
+    type: kafka:4.3
+  opensearch:
+    type: opensearch:2
+  cache:
+    type: redis-persistent:7.2
+  valkey:
+    type: valkey-persistent:8.0
+  maria:
+    type: mariadb:11.4
+    configuration:
+      schemas: [main]
+      endpoints:
+        main:
+          default_schema: main
+          privileges:
+            main: admin
+        replicator:
+          privileges:
+            main: replication
+  maria-replica:
+    type: mariadb-replica:11.4
+    configuration:
+      schemas: [main]
+      endpoints:
+        main:
+          default_schema: main
+          privileges:
+            main: admin
+    relationships:
+      primary: "maria:replicator"
+  solr:
+    type: solr:9.9
+    configuration:
+      cores:
+        collection1: {}
+      endpoints:
+        solr:
+          core: collection1
+  db:
+    type: postgresql:16
+    configuration:
+      databases: [main, reports]
+      endpoints:
+        admin:
+          default_database: main
+          privileges:
+            main: admin
+        reporter:
+          default_database: reports
+          privileges:
+            reports: ro
+        replicator:
+          replication: true
+  db-replica:
+    type: postgresql-replica:16
+    configuration:
+      endpoints:
+        postgresql:
+          default_database: main
+    relationships:
+      primary: "db:replicator"
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "app:http"

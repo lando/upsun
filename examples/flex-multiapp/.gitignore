@@ -1,0 +1,4 @@
+backend/web/hook.txt
+backend/web/worker.txt
+api/node_modules
+api/package-lock.json

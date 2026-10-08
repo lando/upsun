@@ -1,0 +1,10 @@
+name: mymagento
+type: php:8.3
+relationships:
+  database: "mysql:mysql"
+  redis: "redis:redis"
+web:
+  locations:
+    "/":
+      root: web
+      passthru: /index.php

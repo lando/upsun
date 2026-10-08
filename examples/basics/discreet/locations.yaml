@@ -1,3 +1,0 @@
-"/":
-  root: "web"
-  passthru: "/index.php"

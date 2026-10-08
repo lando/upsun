@@ -10,19 +10,19 @@ jobs:
       matrix:
         os:
           - windows-2022
-          - ubuntu-22.04
+          - ubuntu-24.04
           - macos-14
         node-version:
           - '20'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install node ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - name: Install NPM dependencies
         run: npm clean-install --prefer-offline --frozen-lockfile
       - name: Run unit tests
-        run: npm run test:unit
+        run: npm run typecheck && npm run test:unit
