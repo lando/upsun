@@ -1,91 +1,145 @@
 ---
-description: Learn about the various out-of-the-box tooling you get with the Lando Upsun Fixed recipe.
+title: Tooling
+description: Commands the Upsun recipe adds to your project.
 ---
 
 # Tooling
 
-## Upsun Fixed CLI
+Commands are generated from your Upsun configuration. Language, framework,
+CLI, cron, operation, Xdebug and sync commands run in the app
+container with `.environment` sourced. Relationship shells run in the related
+service container. Run `lando` to list them.
 
-Every application container contains the [Upsun Fixed CLI](https://fixed.docs.upsun.com/administration/cli.html) (`platform`), authenticated with `PLATFORMSH_CLI_TOKEN`.
+In a multi-app project, every app gets its own commands. Run a command from
+inside an app's `source.root` to target that app; anywhere else targets the
+closest app (or `config.app`). See
+[Multi-app projects](./config.md#multi-app-projects).
 
-```bash
-# Who am i?
-lando platform auth:info
+In another app's directory (not the project root or the default app's directory),
+Lando uses that app's cached tooling. After adding or changing a Landofile command
+that shares a name with generated tooling, run `lando --clear` (or `lando start` /
+`lando rebuild`) before using it from there. At the project root and in the default
+app's directory, fresh Landofile tooling applies without refreshing the router.
 
-# Tell me about my project
-lando platform project:info
-```
+Generated commands are cached by Lando. After upgrading the plugin, run
+`lando --clear` if a command seems to be missing or behaving like the old
+version.
 
-If you find yourself unauthenticated for whatever reason. You should try the following:
+## Authentication
 
-```bash
-# Reauthenticate using already pulled down code
-lando init --source cwd --recipe upsun
+| Command | Meaning |
+|---|---|
+| `lando auth upsun` | Connect an Upsun account and save its API token for this app without starting containers or syncing data. Flex and Fixed only. |
 
-# Rebuild your lando app
-lando rebuild -y
-```
+See [Authentication](./sync.md#authentication) for saved accounts, browser login
+and pasting an API token.
 
-## Application Tooling
-
-Lando will also setup useful [tooling commands](https://docs.lando.dev/core/v3/tooling.html) based on the `type` of your application container.
-
-These can be used to both relevant tooling and utilities that exist _inside_ the application container. Here are the defaults we provide for the `php` application container.
-
-```bash
-lando composer    Runs composer commands
-lando php         Runs php commands
-```
-
-#### Usage
+## Upsun CLI
 
 ```bash
-# Install some composer things
-lando composer require drush/drush
-
-# Run a php script
-lando php myscript.php
+lando upsun environment:list      # Flex
+lando platform environment:list   # Fixed
 ```
 
-Of course the user can also `lando ssh` and work directly inside _any_ of the containers Lando spins up for your app.
+The CLI is installed in the app container during `lando build`. It is
+authenticated with the app's saved account from `lando auth upsun`, pull, push or switch
+when that token is still cached; otherwise it uses the first cached token. It
+runs with `PLATFORM_RELATIONSHIPS` unset so it never mistakes Lando for Upsun.
+
+## Language tooling
+
+| Runtime | Commands |
+|---|---|
+| php | `lando php`, `lando composer` |
+| nodejs | `lando node`, `lando npm`, `lando yarn` |
+| python | `lando python`, `lando pip` |
+| ruby | `lando ruby`, `lando bundle` |
+| golang | `lando go` |
+
+## Framework tooling
+
+`lando drush` is added when `drush/drush` is in your `composer.json` or
+`composer.lock`.
+
+## Relationship shells
+
+Each database relationship gets a command named after it:
 
 ```bash
-# Attach to the closest applicaiton container
-lando ssh
-
-# Attach to the db service
-lando ssh -s db
+lando database -e "select 1"    # mariadb / mysql
+lando database -c "select 1"    # postgresql (psql)
+lando redis ping
+lando mongodb                   # mongosh
+lando cache                     # valkey-cli for a Valkey relationship
 ```
 
-Note that Lando will surface commands for the _closest application_ it finds. Generally, this will be the `.platform.app.yaml` located in your project root but if you've `cd multiappsubdir` then it will use that instead.
+## Database import and export
 
-## Accessing relationships
-
-Lando will also set up tooling commands so you can directly access the `relationships` specified in your `.platform.app.yaml`.
-
-These are contextual so they will connect via the tool that makes the most sense eg `mysql` for `mariadb` and `redis-cli` for `redis`.
-
-As an example say you have the following relationships in your `.platform.app.yaml`.
-
-```yaml
-relationships:
-  database: 'db:mysql'
-  redis: 'cache:redis'
-```
-
-Then you'd expect to see the following commands and usage:
+Projects with a MariaDB, MySQL or PostgreSQL service get the standard Lando
+helpers:
 
 ```bash
-lando database  Connects to the database relationship
-lando redis     Connects to the database relationship
+lando db-import dump.sql.gz
+lando db-import dump.sql --no-wipe     # keep existing tables
+lando db-export                        # <database>.<timestamp>.sql.gz in the current directory
+lando db-export --stdout > dump.sql
+lando db-export -h reports             # another database service
 ```
+
+| Option | Meaning |
+|---|---|
+| `-h`, `--host` | Database service to use. Defaults to the service behind the closest app's first SQL relationship, or the first SQL service. |
+| `--no-wipe` | Import without dropping the existing database first. |
+| `--stdout` | Export to stdout instead of a file. |
+
+Both commands work on the service's default database: the first schema the
+default endpoint has privileges on, or `main`.
+
+## Operations
 
 ```bash
-# Drop into the mysql shell using the database relationship creds
-lando database
-
-# Drop into the redis-cli shell using the redis relationship creds
-lando redis
+lando operation <name>
 ```
 
-Note that some services eg `solr` provide `web` based interfaces. In these cases Lando will provide a `localhost` address you can use to access that interface.
+Runs `operations.<name>.commands.start` once from the app directory with
+`.environment` sourced.
+
+## Xdebug
+
+PHP apps get runtime toggles for web requests:
+
+```bash
+lando xdebug-on          # mode defaults to debug
+lando xdebug-on develop,debug
+lando xdebug-off
+```
+
+The command reloads PHP-FPM. CLI PHP keeps the `XDEBUG_MODE` value from the
+Landofile/container environment.
+
+## Crons
+
+```bash
+lando cron <name>
+```
+
+Runs `crons.<name>.commands.start` once, from the app directory, with
+`.environment` sourced. With `config.crons: true`, the same jobs are also
+scheduled by Supercronic in the `<app>--cron` sidecar.
+
+## Sync
+
+`lando pull`, `lando push` and `lando switch [environment]` are documented in [Syncing](./sync.md).
+
+Adobe Commerce Cloud projects get `pull`, `push` and `switch` commands that only
+print a message and exit 1. Use the `magento-cloud` CLI for those workflows.
+
+## SSH
+
+`lando ssh` drops you into the closest app container with `.environment`
+sourced, like `upsun ssh`. Use `-s db` for a service.
+
+## Adding more
+
+Extend `tooling:` in your Landofile as with any recipe. See
+[Adding more tooling](./guides/adding-more-tooling.md).

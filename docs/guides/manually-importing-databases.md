@@ -1,17 +1,23 @@
 ---
 title: Manually importing databases
-description: Learn how to manually import other databases into your Lando Platform.sh site.
-guide: true
-mailchimp:
-  action: https://dev.us12.list-manage.com/subscribe/post?u=59874b4d6910fa65e724a4648&amp;id=613837077f
-  title: Want more Platfrom.sh guide content?
-  byline: Signup and we will send you a weekly blog digest of similar content to keep you satiated.
-  button: Sign me up!
+description: Import a SQL dump into a relationship's database.
 ---
 
-If you have data that exists outside Platform.sh eg a `dump.sql` file you'd like to import you can leverage the special `lando` commands we give you to access each `relationship`. You will need to make sure that the relationship you connect with has the appropriate permissions needed to import your dump file.
+# Manually importing databases
+
+`lando pull` is the usual way to get data. To import a dump you already have,
+use the relationship shell generated for it:
 
 ```bash
-# Import to the main schema using the database relationships
-lando database main < dump.sql
+# MariaDB / MySQL relationship named "database"
+lando database < dump.sql
+
+# PostgreSQL relationship named "database"
+lando database < dump.sql
+
+# gzipped
+gunzip -c dump.sql.gz | lando database
 ```
+
+The shell connects as the local credentials Lando reports in
+`DATABASE_USERNAME` / `DATABASE_PASSWORD` to the `DATABASE_PATH` database.

@@ -1,162 +1,148 @@
 ---
 title: Caveats
-description: Learn about caveats and known issues with the Lando Platform.sh recipe.
+description: Where local differs from Upsun.
 ---
 
-# Caveats and known issues
+# Caveats
 
-This is a **Fixed-only** WIP. Flex (`.upsun/config.yaml`) is rejected until Phase 3. File issues on [lando/upsun](https://github.com/lando/upsun/issues).
+## Not Upsun's images
 
-## Flex
+Upsun's production images are not publicly published (the old
+`docker.registry.platform.sh` registry froze in 2024 and is amd64-only), so
+services run on Lando's own images or upstream Docker Hub images. Compose-backed
+images are pinned to the upstream versions Upsun ships, using the public
+`upsun/meta` registry, when Docker Hub publishes a matching tag for both
+`linux/amd64` and `linux/arm64`. If the exact tag is unavailable, the newest
+compatible multi-arch patch tag in the same Upsun version line is used; without
+a verified pin, the existing tag behavior stays unchanged. Consequences:
 
-If `.upsun/config.yaml` exists, the plugin throws `Flex unsupported until Phase 3; Fixed-only.` An empty `.upsun/` directory is not Flex and is ignored.
+- PHP extensions and system packages differ from production. Requested PHP
+  extensions use `install-php-extensions`; `blackfire`, `newrelic`,
+  `sourceguardian` and `ioncube` are skipped with a warning.
+- `size`, `disk`, `resources` and `container_profile` are ignored.
+- MariaDB and PostgreSQL endpoint users are created with password `upsun` on
+  every start. The endpoint name is the username; the default is `upsun`.
+  Replica users instead use `<replica>_<endpoint>` to avoid primary user collisions.
 
-## `$HOME` considerations
+### Plugin versions
 
-Platform.sh sets `$HOME` to `/app` by default. This makes sense in a read-only hosting context but is problematic for local development because this is also where your `git` repository lives and you probably don't want to accidentally commit your `$HOME/.composer` cache into your repo.
+Install the Lando service plugins your project uses. They are optional peer
+dependencies: a Node.js-only project doesn't need the PHP plugin.
 
-Lando changes this behavior and sets `$HOME` to its own default of `/var/www` for most _user initiated_ commands and automatic build steps.
+<a id="plugin-missing"></a>
 
-Lando also will override any `PLATFORM_VARIABLES` that should be set differently for local dev. For example, Platform.sh's Drupal 8 template will set the Drupal `/tmp` directory to `/app/tmp`, but Lando will instead set this to `/tmp`.
+- `plugin-missing`: a required plugin isn't installed. The built-in version list
+  lets mapping continue, but it doesn't install the plugin needed to start the service.
 
-However, it's _probable_ at this early stage that we have not caught all the places where we need to do both of the above. As a result, you probably want to:
+<a id="plugin-outdated"></a>
 
-### 1. Look out for caches, configs, or other files that might normally end up in `$HOME`.
+- `plugin-outdated`: an installed plugin's version list lacks the newest entry in
+  this recipe's built-in list. Some requested versions may fall back.
 
-Do your due diligence and be sure to `git status` before `git add`. If you see something that shouldn't be there, [let us know](https://github.com/lando/platformsh/issues/new/choose) and then add it to your `.gitignore` until we resolve the issue.
+<a id="plugin-unreadable"></a>
 
+- `plugin-unreadable`: a service plugin could not be loaded. Mapping uses the built-in version list; repair or update the plugin before starting the service.
 
-### 2. Consider Lando-specific configuration
-
-If you notice your application is _not working quite right_, you may need to tweak some of the defaults for your application's configuration for Lando. We recommend you do something like the below snippet.
-
-`settings.local.php`
-
-```php
-$platformsh = new \Platformsh\ConfigReader\Config();
-
-if ($platformsh->environment === 'lando') {
-  $settings['file_private_path'] = '/tmp';
-  $config['system.file']['path']['temporary'] = '/tmp';
-}
-
-```
-
-This is just an example; your specific configuration needs will be different.
-
-## Redirects
-
-Lando will currently not perform redirects specified in your `routes.yaml`. Instead it will provide separate `http` and `https` routes.
-
-Adding redirect support is being discussed in this ticket: <https://github.com/lando/lando/issues/2509>.
-
-## Local considerations
-
-There are some application settings and configuration that Platform.sh will automatically set if your project is based on one of their boilerplates. While most of these settings are fine for local development, some are not. If these settings need to be altered for your site to work as expected locally then Lando will modify them.
-
-For example if your project is based on the [Drupal 8 Template](https://github.com/platformsh-templates/drupal8) then Lando will set the `tmp` directory and set `skip_permissions_hardening` to `TRUE`.
-
-Lando will likely _not_ do this in the future in favor of a better solution but until then you can check out what we set over [here](https://github.com/lando/platformsh/blob/main/lib/overrides.js).
-
-## Memory limits
-
-Some services eg Elasticsearch require A LOT of memory to run. Sometimes this memory limit is above the defaults set by Docker Desktop. If you are trying to start an app with memory intensive services and it is hanging try to bump the resources allocated to Docker Desktop and try again. See the below docs:
-
-* [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
-* [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-
-## Xdebug
-
-You can enable and use xdebug by turning on the extension in your `.platform.app.yaml` and doing a `lando rebuild`.
-
-```yaml
-runtime:
-  extensions:
-    - redis
-    - xdebug
-```
-
-Due to how Platform.sh sets up `xdebug` it should be ok to have this on even in production. However, if you would like to enable it _only_ on Lando you can override the extensions in your Landofile. Note that the entire array is replaced in the overrides so your Landofile should reflect _all_ the extensions you want to use not just the difference.
-
-```yaml
-recipe: upsun
-config:
-  id: PROJECT_ID
-  overrides:
-    app:
-      runtime:
-        extensions:
-          - redis
-          - xdebug
-```
-
-Lando will also make a best effort attempt to set the correct `xdebug` configuration so that it works "out of the box". If you find that things are not working as expected you can modify the configuration to your liking using the same override mechanisn.
-
-
-```yaml
-config:
-  id: PROJECT_ID
-  overrides:
-    app:
-      runtime:
-        extensions:
-          - redis
-          - xdebug
-      php:
-        # XDEBUG 2
-        xdebug.remote_enable: 1
-        xdebug.remote_mode: req
-        xdebug.remote_port: 9000
-        xdebug.remote_connect_back: 0
-
-        # XDEBUG 3
-        xdebug.discover_client_host: true
-        xdebug.mode: debug
-```
-
-## Platformsh.agent errors
-
-When you run `lando start` or `lando rebuild` you may experience either Lando hanging or an error being thrown by something called the `platformsh.agent`. We are attempting to track down the causes of some of these failures but they are generally easy to identify and workaround:
+Install or update the plugin named in the warning, for example:
 
 ```bash
-# Check if a container for your app has exited
-docker ps -a
-
-# Inspect the cause of the failure
-#
-# Change app to whatever you named your application
-# in your .platform.app.yaml
-lando logs -s app
-
-# Try again
-# Running lando start again seems to work around the error
-lando start
+lando plugin-add @lando/php
 ```
 
-## Persistence across rebuilds
+Only plugins used by your mapped local apps and services are checked.
 
-We've currently only verified that data will persist across `lando rebuilds` for the MariaDB/MySQL and PostgreSQL services. It _may_ persist on other services but we have not tested this yet so be careful before you `lando rebuild` on other services.
+### Upsun version lifecycle
 
-## Multiapp
+<a id="upsun-version-deprecated"></a>
 
-If you are using `.platform/applications.yaml` to configure multiple applications and you have two apps with the same `source.root` then Lando will currently use the _first_ application for tooling.
+- `upsun-version-deprecated`: Upsun marks the requested app runtime or service
+  version deprecated. Plan an upgrade to a supported version in your Upsun config.
 
-As a workaround you can use `lando ssh` with the `-s` option to access tooling for other applications with that `source.root`.
+<a id="upsun-version-retired"></a>
 
-In the below example, assume there are three `php` applications with the same `source.route`.
+- `upsun-version-retired`: Upsun marks the requested version retired or
+  decommissioned. Upgrade your Upsun config; running locally does not mean Upsun
+  still supports it. The warning includes the upstream end-of-life date when known.
 
-```bash
-# Go into a directory that has many apps with that same source.route
-# See the php version of the first app with source.root at this directory
-lando php -v
+Lifecycle status comes from the bundled registry snapshot, not a runtime network
+request. Unknown types and versions do not warn because the registry is beta.
+Composable apps and replicas (their primary already warns) are skipped.
 
-# Access another app with same source.root
-lando -s app2 -c "php -v"
-```
+## Emulation limits
 
-## Unsupported things
+- Crons always run on demand with `lando cron <name>`. Set `config.crons: true`
+  to schedule them in `<app>--cron`; jobs run as the container user.
+- `workers` run as extra services from the same image.
+- Relationships to other applications resolve to the target app's local Lando
+  service (for example `app_nginx:80`). `<rel>.internal` hostnames are not
+  emulated; read `<REL>_HOST` / `<REL>_PORT` or `PLATFORM_RELATIONSHIPS`.
+- Database endpoints without `default_schema` / `default_database` report a
+  null path and no `<REL>_PATH`, exactly as Upsun does.
+- Redirect routes and `redirects.paths` are real Traefik redirects. Redirect
+  routes are permanent 301s; a path can request 302.
+- Composable images use the first declared runtime. A secondary Node.js runtime
+  beside PHP is installed in the PHP container; other secondary runtimes warn.
+- `java`, `dotnet`, `elixir` and `rust` apps and `vault-kms` services are not
+  created.
+- `mariadb-replica` and `postgresql-replica` (`postgres-replica` on Fixed) are
+  read-only users on their primary, not separate containers. They see primary
+  writes immediately, without Upsun's replication lag. MariaDB uses the `ro` grant set;
+  PostgreSQL uses `default_transaction_read_only`, a session default rather than
+  a real hot standby. Pull, push and switch skip or reject replica relationships; pull the primary instead.
+- `lando pull` only imports SQL databases, not Valkey data.
+- Versions Lando does not ship use the nearest lower version in the same major,
+  or the newest supported version when that major is unavailable.
 
-There are a few things that are currently unsupported at this time, athough we hope to add support in the future.
+## Proxy
 
-* Non `php` application containers. [#2368](https://github.com/lando/lando/issues/2368)
-* `workers` and the `network_storage` service [#2393](https://github.com/lando/lando/issues/2393)
+Lando's proxy needs ports `80` and `443`. If they are taken, URLs move to
+fallback ports such as `:8888`/`:8443`, or the proxy fails to start; the
+containers still work. Host-level app, redirect and Mailpit URLs carry the
+fallback port when Lando moves the proxy.
+
+## Lifecycle configuration
+
+Lando lock-gates `config.run` steps, so they run once per rebuild. Put work that
+must run on every start in `hooks.deploy` or `hooks.post_deploy`; the plugin runs
+those through its `post-start` runner every time.
+
+## `PLATFORM_RELATIONSHIPS` and the CLI
+
+The Upsun CLI treats a set `PLATFORM_RELATIONSHIPS` as "running on Upsun".
+`lando upsun`, `lando pull` and `lando push` unset it; if you call the CLI from
+your own scripts inside the container, do the same.
+
+## Apple Silicon and arm64
+
+The registry generator verifies both `linux/amd64` and `linux/arm64` on Docker Hub
+before saving a pin. Examples from the bundled snapshot are below; this does not
+guarantee that every Upsun version has a matching image tag.
+
+| Image | Verified tags | arm64 |
+|---|---|---|
+| `opensearchproject/opensearch` | `2.19.6`, `3.9.0` | Yes |
+| `valkey/valkey` | `8.0.11`, `9.0.6` | Yes |
+| `rabbitmq` | `4.3.6-management` | Yes |
+| `apache/kafka` | `3.7.2`, `4.1.2`, `4.3.1` | Yes |
+| `influxdb` | `2.3.0`, `2.7.12` | Yes |
+| `chromedp/headless-shell` | No verified pin for Upsun `113` or `120` | Not verified |
+| `gotenberg/gotenberg` | `8.37.0` | Yes |
+| `clickhouse/clickhouse-server` | `26.8.15.10` | Yes |
+| `dunglas/mercure` | `v0.24.2` | Yes |
+
+**Installers.** The Supercronic, Upsun/Platform CLI and Node.js installers select
+arm64 artifacts via `uname -m`, accepting both `aarch64` and `arm64`. PHP extensions
+delegate to `install-php-extensions` inside the image.
+
+### Version tags
+
+Known registry versions use the saved pins automatically, including
+`kafka:4.3` → `apache/kafka:4.3.1` and `mercure:0` → `dunglas/mercure:v0.24.2`.
+Unpinned versions retain their old tags and may still lack a Docker Hub manifest.
+InfluxDB 3 is not pinned because its `-core` images require a different entrypoint;
+Chrome `113`/`120` and Kafka `3.6` have no verified matching multi-arch pin.
+If `lando start` fails with a
+`manifest unknown` pull error, pin a published image tag in your Landofile's
+top-level [`services:` block](./config.md#overrides), at
+`services.<service-name>.services.image` (for example, `apache/kafka:4.3.1`
+for your Kafka service), then run `lando rebuild`.

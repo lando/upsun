@@ -1,82 +1,81 @@
+---
+title: Lifecycle
+description: What happens when an Upsun project starts under Lando.
+---
 
-## Platform.sh container lifecycle
+# Lifecycle
 
-Normally Lando expects containers to undergo a lifecycle like:
+1. **Load.** The recipe detects the flavor, reads `.upsun/*.yaml` or
+   `.platform*`, and normalizes it into one model.
+2. **Map.** Each application and service is mapped to a Lando service; routes
+   become proxy entries; tooling is generated for every app. The closest app's
+   generated commands plus recipe options go into `<app>.recipe.cache`, without
+   Landofile tooling. The per-directory router has empty root and closest-app
+   entries, so fresh Landofile commands win there. Other apps get generated commands
+   minus user-owned names, with `false` only for missing closest-app commands the
+   user does not own. Duplicate paths favor the empty root/closest entries.
+   At `post-init` 4 the selected route is shallow-merged and non-object commands are
+   removed, even for empty routes, before core builds tasks at 5. At 9 the router is
+   double-JSON cached in `<app>.tooling.router` for core's warm path. After adding or
+   changing a colliding Landofile command, run `lando --clear`, `lando start` or
+   `lando rebuild` before using it from another app's directory.
+3. **Build** (first start and `lando rebuild`).
+   - PHP root steps: install `jq`, configure requested extensions, link a root
+     `php.ini`, install a secondary Node.js runtime when declared, configure
+     Mailpit sendmail, then install the `upsun` or `platform` CLI.
+   - Other runtimes: install MariaDB/PostgreSQL clients, `jq`, `rsync` and an SSH
+     client, then install the CLI.
+   - As the app user: install declared dependencies, run the build flavor
+     (`composer install` / `npm install`), then `hooks.build` with `.environment`
+     sourced; before sourcing, Lando's `/app/vendor/bin` and `/app/bin` (and their
+     app-directory equivalents) are removed from PATH so the image's Composer
+     and tools are used, like an Upsun build. `config.build` follows for the closest app.
+4. **Start.** Non-PHP apps and workers use `/helpers/upsun-start.sh`. It waits for
+   database provisioning when asked (below), runs the web application's `pre_start`, then replaces itself with
+   `PLATFORM_APP_COMMAND`. Workers run only their own start command, or idle if
+   none is defined. Static apps idle while nginx serves their files and file fallbacks.
+5. **Every start.** At Lando `post-start` priority 101, the plugin runs commands
+   in this order: mounts → database initialization → provisioned
+   marker → PHP `pre_start` → `post_start` → `hooks.deploy` →
+   `hooks.post_deploy`. Database initialization creates configured schemas and
+   endpoint users before any hook runs. Replica users and grants run on the
+   primary after primary initialization, even when the replica is declared first.
 
-1. Pre-start build steps run if applicable
-2. Container starts
+## Sign in without starting
 
-In `docker-compose` terms this is generally something like:
+`lando auth upsun` prompts for an account and initializes the app, but its empty
+command list starts no containers and runs no environment operations. The
+`post-auth` event validates and saves the token for the app's vendor, updates
+`<app>.meta.cache` and prints the connected email. Rejected tokens are removed;
+network errors and outages leave saved accounts intact.
 
-```bash
-# If there are build steps
-docker-compose up
-docker-compose exec appserver command1
-...
-docker-compose exec database command3
-docker-compose kill
+CLI tooling prefers the app's saved token while it remains cached,
+including accounts saved by `post-pull`, `post-push` and `post-switch`, and
+`lando pull`/`push`/`switch` default `--auth` to it instead of prompting.
+Whenever a token is saved or a rejected one is removed, the `<app>.recipe.cache`
+and `<app>.tooling.router` caches are dropped so the next command is rebuilt
+with the current account.
 
-# Start the app
-docker-compose up
-```
+## Provisioning wait
 
-Platform.sh containers have a more complex lifecycle
+Only the closest non-PHP application with local SQL initialization gets `UPSUN_PROVISION_WAIT=300`.
+Its start wrapper waits for `UPSUN_PROVISIONED_FILE`
+(`/dev/shm/upsun-provisioned`), which the every-start runner touches once
+database initialization finishes. After 300 seconds it prints a warning and
+starts anyway. PHP apps, workers and cron sidecars do not wait.
 
-1. The container is BOOTed
-2. The container undergoes a BUILD
-3. The container is STARTed
-4. The containers are OPENed
+## Failures
 
-There are other assumptions these containers have that are provided by platform.sh's actual orchestration layer. As we do not have that layer available locally we seek to "spoof" some of those things.
+If any every-start command fails, Lando finishes starting, prints a warning
+that names the failed step, and `lando start` exits nonzero. Fix the cause and
+run `lando restart`.
 
-Most of these things are handled by a `python` utility called the `platformsh.agent`. There are also useful wrapper scripts, utilities, templates etc that can be found in `/etc/platform` inside each platform.sh container.
+Lando's `run_*` steps are lock-gated and run once per rebuild. The separate
+`post-start` runner is why mounts, database setup and deploy hooks
+run again after every `lando start` or `lando restart`.
 
-Here are some key things to know about each step and what Lando does to change them.
+With `config.crons: true`, `<app>--cron` installs Supercronic and schedules the
+configured `crons` entries. `lando cron <name>` remains available either way.
 
-### BOOT
-
-1. BOOT unmounts `/etc/hosts` and `/etc/resolv.conf`. This stops Docker from controlling them so platform can
-2. BOOT will setup and prepare any needed directories
-3. BOOT will run `runsvdir` on `/etc/services/`
-4. BOOT will send a ping to a spoofed RPC agent to mimic what platform expects
-5. BOOT will finish by running `/etc/platform/boot`
-
-Lando puts all this logic in `scripts/upsun-boot.sh` (compat wrapper: `psh-boot.sh`) and uses it for both the `BOOT` and `START` phases by putting it into `/scripts` inside of each container. Lando's entrypoint script will run anything it finds in this directory before it hands off to the "main" process/command. Also note that `/etc/platform/boot` will finish by handing off to `/etc/platform/start`.
-
-Additionally, Lando will run `scripts/upsun-recreate-users.sh` before anything else. This script handles host:container permission mapping.
-
-On platform.sh application containers run as `web:x:10000:10000::/app:/bin/bash` and _most_ services run as `app:x:1000:1000::/app:/bin/bash`. However locally we need whatever user is running process 1 to match the host (eg yours) uid and groupid.
-
-### BUILD
-
-The platform.sh BUILD step uses an internal Lando `build` step behind the scenes. This means it:
-
-1. Only runs on the initial `lando start` and subsequent `lando rebuilds`
-2. Runs _before_ the container STARTS and before any user-defined build steps
-
-The BUILD step will use `scripts/upsun-build.sh`. This has a few differences from Platform
-
-1. BUILD will set `$HOME` to `/var/www` instead of `/app` so build artifacts/caches dont potentially in your git repo
-2. BUILD will install the platform CLI first if it needs to
-3. BUILD will use `platform local:build` (for now) instead of the underlying `/etc/platform/build`
-
-### START
-
-Start has a similar lifecycle to `BOOT` except that it ends by running `/etc/platform/start` instead of `/etc/platform/boot`.
-
-Once `/etc/platform/start` finishes the main process/command is run. This is `exec init` for all containers. At this point each container should have a main process running and that process shuold be controlling a bunch of other processes eg `php-fpm` and `nginx` in the case of a `php` container.
-
-However, these containers are all "living in the dark" and need to be OPENed so they can both talk to one another and handle requests.
-
-### OPEN
-
-OPEN is the step that most diverges from what Lando expects in that it requires Lando do additional things AFTER an app has started. Usually once an app has started Lando expects its ready to go. This is not the case for platform. Generally the flow that needs to happen here is:
-
-1. Lando needs to OPEN each platform service eg non-application containers
-2. Lando needs to collect the output from all these commands together
-3. Lando needs to merge in additional data its previously collected such as the IP addresses of services
-4. Lando then needs to inject this payload when it OPENs the application containers
-
-Once this has completed each application container will be "open for business" and ready to handle requests. This is also required to set `PLATFORM_RELATIONSHIPS` which is very important so applications can easily connect to services.
-
-Behind the scenes we use the helper script `scripts/upsun-open.sh`. We also do the open logic in `app.js` in a `post-start` event. OPEN still sets `PLATFORM_RELATIONSHIPS` from Fixed service output.
+Details of the model, environment and mapping contracts are in
+[Architecture](./architecture.md).

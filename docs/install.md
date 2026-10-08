@@ -1,27 +1,20 @@
 ---
 title: Installation
-description: How to install the Lando Upsun (Fixed) plugin.
+description: How to install the Lando Upsun plugin.
 ---
 
 # Installation
 
-This plugin is **not** bundled with Lando. Install it explicitly.
-
-::: code-group
-```sh [lando 3.21+]
+```bash
 lando plugin-add @lando/upsun
 ```
 
-```sh [docker]
-mkdir -p ~/.lando/plugins
-docker run --rm -it -v ${HOME}/.lando/plugins:/plugins -w /tmp node:20-alpine sh -c \
-  "npm init -y \
-  && npm install @lando/upsun --production --flat --no-default-rc --no-lockfile --link-duplicates \
-  && npm install --production --cwd /tmp/node_modules/@lando/upsun \
-  && mkdir -p /plugins/@lando \
-  && mv --force /tmp/node_modules/@lando/upsun /plugins/@lando/upsun"
-lando --clear
-```
-:::
+Verify with `lando config --path plugins`; it lists `@lando/upsun` and where it
+is loaded from.
 
-Verify with `lando config --path plugins` and look for `@lando/upsun`.
+## Upgrading from @lando/platformsh
+
+Remove the old plugin with `lando plugin-remove @lando/platformsh` and install `@lando/upsun` above.
+`recipe: platformsh` still works as a deprecated alias; switch to `recipe: upsun` and run `lando rebuild`.
+Re-authenticate with `lando auth upsun` instead of the old `lando init --source cwd --recipe platformsh` step.
+See [Caveats](./caveats.md) for optional `@lando/*` plugins to install or update when `plugin-missing` or `plugin-outdated` warns.

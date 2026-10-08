@@ -1,22 +1,87 @@
 ---
-title: Upsun Lando Plugin (Fixed)
-description: Local Lando development for Upsun Fixed (.platform) projects. platform CLI / PLATFORMSH_CLI_TOKEN. Flex is not supported.
+title: Lando Upsun Plugin
+description: Run Upsun Flex and Upsun Fixed projects locally with Lando.
 next: ./getting-started.html
 ---
 
-::: warning Fixed-only
-This plugin is a WIP revival of `@lando/platformsh`. Phase-0/1 loads **Fixed** config only (`.platform.app.yaml` and `.platform/*`). If `.upsun/config.yaml` is present the plugin aborts. Flex is Phase 3. An empty `.upsun/` directory is ignored. OPEN is not claimed.
-:::
+# Upsun
 
-# Upsun (Fixed)
+This plugin runs [Upsun](https://upsun.com/) projects locally. It reads your
+Upsun configuration, builds the equivalent Lando services, and gives the app
+container the same runtime contract it gets on Upsun:
 
-[Upsun](https://upsun.com/) Fixed projects still use the Platform.sh yaml layout and images. Phase-0/1 of this plugin:
+- `PLATFORM_*` variables (`PLATFORM_RELATIONSHIPS`, `PLATFORM_ROUTES`,
+  `PLATFORM_APPLICATION`, `PLATFORM_VARIABLES`, ...)
+- per-relationship service variables (`DATABASE_HOST`, `DATABASE_URL`, ...)
+- build and every-start hooks, mounts, workers, operations and optional scheduled crons
+- real local redirects, Mailpit and Xdebug toggles
+- the `upsun` CLI inside the container, plus `lando pull` and `lando push`
 
-* Renames the package/recipe to `@lando/upsun` / `upsun`
-* Loads Fixed `.platform*` config and rejects Flex (`.upsun/config.yaml`)
-* Keeps the `platform` CLI, `PLATFORMSH_CLI_TOKEN`, and `~/.platformsh/` auth path
-* Phase-2 pull/push: resume/activate before parent fallback; Landofile `config.id` for `-p`. **Not E2E-proven** without a live token.
+Both Upsun configuration flavors are supported:
 
-OPEN / `PLATFORM_RELATIONSHIPS` at runtime is **deferred** until a live Docker proof. Flex local OPEN is a hard error until Phase 3.
+| Flavor | Config | CLI |
+|---|---|---|
+| **Upsun Flex** | `.upsun/config.yaml` | `upsun` |
+| **Upsun Fixed** (formerly Platform.sh) | `.platform.app.yaml` + `.platform/` | `platform` |
 
-PHP is the only supported application language. Workers, `network_storage`, and non-PHP runtimes still warn as unsupported.
+```yaml
+name: my-project
+recipe: upsun
+```
+
+Services run on Lando's own service plugins (PHP, MariaDB, PostgreSQL, Redis,
+...) rather than Upsun's production images, so current versions and ARM hosts
+work. See [Caveats](./caveats.md) for what that means.
+
+## Supported runtimes
+
+| Upsun `type` | Lando service |
+|---|---|
+| `php` | `php` (nginx) |
+| `nodejs` | `node` |
+| `python` | `python` |
+| `ruby` | `ruby` |
+| `golang` | `go` |
+| `composable` | the primary runtime in the `stack` (php, nodejs, python, ruby, golang) |
+
+`java`, `dotnet`, `elixir` and `rust` are not supported and produce a warning.
+
+## Supported services
+
+| Upsun `type` | Lando service |
+|---|---|
+| `mariadb`, `mysql` | `mariadb` |
+| `mariadb-replica` | read-only user on its primary; no container |
+| `oracle-mysql` | `mysql` |
+| `postgresql` | `postgres` |
+| `postgresql-replica`, `postgres-replica` | read-only user on its primary; no container |
+| `redis`, `redis-persistent` | `redis` |
+| `memcached` | `memcached` |
+| `mongodb`, `mongodb-enterprise` | `mongo` |
+| `solr` | `solr` |
+| `elasticsearch`, `elasticsearch-enterprise` | `elasticsearch` |
+| `varnish` | `varnish` |
+| `opensearch`, `valkey`, `valkey-persistent`, `rabbitmq`, `kafka`, `influxdb`, `chrome-headless`, `gotenberg`, `clickhouse`, `mercure` | official upstream image via `compose` |
+| `network-storage` | mount directories only; no local service |
+| `vault-kms` | not supported |
+
+Versions are matched exactly when Lando supports them; otherwise the nearest
+lower version in the same major (or the newest supported) is used with a
+warning.
+
+`mariadb-replica`, `postgresql-replica` (Flex) and `postgres-replica` (Fixed)
+run on their primary through a read-only user, without another container. Reads
+see primary writes immediately, with no replication lag. MariaDB uses SELECT
+grants; PostgreSQL uses `default_transaction_read_only`. Local usernames are
+`<replica>_<endpoint>`, unlike Upsun's endpoint usernames. Pull, push and switch
+skip replica relationships: pull the primary instead.
+
+`valkey-persistent` uses a named data volume and append-only writes to retain
+data across restarts and rebuilds. `lando destroy` deletes its local data.
+`lando pull` only imports SQL databases, not Valkey data.
+
+## Requirements
+
+- Lando `3.21.0` or newer
+- Ports `80` and `443` free on the host for Lando's proxy
+- `jq` is installed in app containers

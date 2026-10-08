@@ -1,13 +1,13 @@
 ---
 title: Contact Us
-description: Get help and support for the Lando Platformsh Plugin
+description: Get help and support for the Lando Upsun Plugin
 ---
 
 # Contact Us
 
-If you need priority and dedicated support, expediated bug fixes or more features then please contact us below.
+If you need priority and dedicated support, expedited bug fixes or more features then please contact us below.
 
-<form class="netlify" name="contact" method="POST" netflify data-netlify="true">
+<form class="netlify" name="contact" method="POST" data-netlify="true">
   <input type="hidden" name="form-name" value="contact" />
   <p>
     <label>Name: <input type="text" name="name" /></label>
