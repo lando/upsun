@@ -1,0 +1,33 @@
+applications:
+  web:
+    type: nodejs:22
+    source:
+      root: frontend
+    web:
+      commands:
+        start: npm start
+    workers:
+      queue:
+        commands:
+          start: npm run queue
+  api:
+    type: python:3.13
+    source:
+      root: api
+    relationships:
+      database:
+        service: db
+        endpoint: reporting
+services:
+  db:
+    type: postgresql:17
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: web:http
+  "https://api.{default}/":
+    type: upstream
+    upstream: api:http
+  "https://www.{default}/":
+    type: redirect
+    to: "https://{default}/"

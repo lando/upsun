@@ -1,0 +1,5 @@
+name: api
+type: python:3.12
+web:
+  commands:
+    start: python app.py

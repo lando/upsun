@@ -1,0 +1,13 @@
+{
+  "packages": [
+    {
+      "name": "drupal/core",
+      "version": "11.0.0"
+    },
+    {
+      "name": "drush/drush",
+      "version": "13.0.0"
+    }
+  ],
+  "packages-dev": []
+}

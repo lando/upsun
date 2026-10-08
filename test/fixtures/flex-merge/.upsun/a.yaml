@@ -1,0 +1,13 @@
+applications:
+  app:
+    type: php:8.4
+    web:
+      locations:
+        "/":
+          root: public
+          scripts: true
+services:
+  db:
+    type: mariadb:11.4
+    configuration:
+      schemas: [main]

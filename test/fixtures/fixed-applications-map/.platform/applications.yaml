@@ -1,0 +1,21 @@
+web:
+  type: nodejs:22
+  source:
+    root: web
+  web:
+    locations:
+      "/":
+        root: "."
+        passthru: true
+  relationships:
+    database: "db:mysql"
+api:
+  name: api
+  type: php:8.2
+  source:
+    root: api
+  web:
+    locations:
+      "/":
+        root: "."
+        passthru: "/index.php"
