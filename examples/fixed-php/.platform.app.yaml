@@ -13,6 +13,8 @@ web:
     "/":
       root: "web"
       passthru: "/index.php"
+runtime:
+  extensions: [xdebug]
 hooks:
   build: |
     echo build-hook > web/hook.txt

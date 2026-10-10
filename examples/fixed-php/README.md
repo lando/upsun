@@ -39,6 +39,10 @@ lando exec app -- curl -s http://app_nginx/ | grep "hook=build-hook"
 # Should create local mounts
 lando exec app -- ls -d /app/web/files
 
+# Should enable the bundled xdebug extension from runtime.extensions and leave it off
+lando exec app -- php -m | grep -i xdebug
+lando php -r 'echo count(xdebug_info("mode"));' | grep 0
+
 # Should install the platform CLI for Fixed projects
 lando platform --version | grep -E '[0-9]+\.[0-9]+'
 lando exec app -- which psql

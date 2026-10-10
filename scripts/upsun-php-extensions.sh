@@ -6,6 +6,7 @@ set -e
 
 PHP_BIN="${UPSUN_PHP_BIN:-php}"
 EXT_INSTALLER="${UPSUN_PHP_EXT_INSTALLER:-install-php-extensions}"
+EXT_ENABLE="${UPSUN_PHP_EXT_ENABLE:-docker-php-ext-enable}"
 CONF_DIR="${UPSUN_PHP_CONF_DIR:-/usr/local/etc/php/conf.d}"
 enable=""
 disable=""
@@ -32,6 +33,8 @@ done
 [ -n "$enable$disable" ] || exit 0
 
 loaded="$("$PHP_BIN" -m | tr '[:upper:]' '[:lower:]' | sed 's/^zend opcache$/opcache/')"
+# Lando's PHP images ship some extensions (xdebug) built but not enabled; the installer refuses to reinstall those.
+ext_dir="${UPSUN_PHP_EXT_DIR:-$("$PHP_BIN" -r 'echo ini_get("extension_dir");')}"
 failed=0
 
 if [ -n "$enable" ]; then
@@ -40,6 +43,12 @@ if [ -n "$enable" ]; then
     [ -n "$extension" ] || continue
     if printf '%s\n' "$loaded" | grep -Fxq "${extension,,}"; then
       lando_green "$extension already enabled"
+    elif [ -f "$ext_dir/$extension.so" ]; then
+      lando_pink "Enabling PHP extension $extension"
+      if ! "$EXT_ENABLE" "$extension"; then
+        lando_red "Failed to enable $extension"
+        failed=1
+      fi
     else
       lando_pink "Installing PHP extension $extension"
       if ! "$EXT_INSTALLER" "$extension"; then

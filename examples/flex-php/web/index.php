@@ -6,7 +6,8 @@ echo 'foo=' . getenv('FOO') . "\n";
 echo 'pre=' . trim(@file_get_contents(__DIR__ . '/pre.txt')) . "\n";
 echo 'memory_limit=' . ini_get('memory_limit') . "\n";
 echo 'xsl=' . (extension_loaded('xsl') ? 'yes' : 'no') . "\n";
-echo 'xdebug=' . (extension_loaded('xdebug') ? ini_get('xdebug.mode') : 'off') . "\n";
+echo 'xdebug=' . (extension_loaded('xdebug') ? (implode(',', xdebug_info('mode')) ?: 'off') : 'off') . "\n";
+echo 'xdebug.idekey=' . ini_get('xdebug.idekey') . "\n";
 echo 'smtp=' . getenv('PLATFORM_SMTP_HOST') . "\n";
 
 $relationships = json_decode(base64_decode(getenv('PLATFORM_RELATIONSHIPS')), true);

@@ -216,7 +216,7 @@ assembly:
 
 | Role | Name | Command/proxy | Build behaviour |
 |---|---|---|---|
-| PHP app | `<app>` | nginx with `fastcgi_pass <app>:9000`; proxy `<app>_nginx:80` | jq, extensions, root php.ini, optional Node.js, Mailpit ini; dependencies and build hook |
+| PHP app | `<app>` | nginx with `fastcgi_pass <app>:9000`; proxy `<app>_nginx:80` | jq, extensions, root php.ini, optional Node.js, Mailpit ini; dependencies and build hook. Generated php.ini carries `xdebug.mode`, `runtime.xdebug.idekey` and `variables.php`; `XDEBUG_MODE` is blanked in the container environment so that ini and `upsun-xdebug.sh` decide the mode |
 | non-PHP app | `<app>` | `/helpers/upsun-start.sh`; port `8888` | database clients, jq, rsync, SSH; dependencies and build hook |
 | worker | `<app>--<worker>` | start wrapper; no proxy | app root setup; no app build steps |
 | cron | `<app>--cron` | `/helpers/upsun-crond.sh`; no proxy | app root setup plus Supercronic; no app build steps |
@@ -226,6 +226,19 @@ Every mapped runtime definition carries temporary `upsun` metadata with
 `role`, model app, locations, relationships, proxy target and static state.
 It also carries `build_as_root` and `build` arrays. The builder consumes those
 keys into `build_as_root_internal` / `build_internal` and removes the metadata.
+
+The Xdebug mode is `config.xdebug` when the Landofile sets it (`true` means
+`debug`), otherwise `debug` when the app declares `runtime.xdebug.idekey`, otherwise
+`off`. A mode other than `off` is passed to the PHP plugin, which enables the
+bundled extension at build; `xdebug` is then left out of the extension step.
+`upsun-php-extensions.sh` enables extensions whose `.so` already sits in the
+extension directory instead of calling the installer, which refuses to reinstall
+them.
+`runtime.disabled_extensions: [xdebug]` prevents build-time loading even when an
+IDE key or mode is configured; `lando xdebug-on` can still load it explicitly.
+`variables.php` settings override the generated mode and IDE key without changing
+whether the extension is loaded. On legacy Xdebug 2, `xdebug-off` removes the
+bundled extension's ini file because that version does not support `xdebug.mode`.
 
 Automatic Composer/npm build-flavor steps change into `/app/<sourceRoot>` for
 nested apps. Dependency arguments and source/mount paths are shell-quoted;
@@ -549,8 +562,8 @@ rejected (`post-auth`, `post-pull`, `post-push`, `post-switch`, the
 | `upsun-operation.sh` | operation name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-cron.sh` | cron name | `PLATFORM_APPLICATION`, `PLATFORM_APP_DIR` |
 | `upsun-crond.sh` | none | `PLATFORM_APPLICATION`, `UPSUN_CRONTAB` (`/tmp/crontab`), `UPSUN_SUPERCRONIC`, `UPSUN_CRON_SCRIPT` |
-| `upsun-php-extensions.sh` | `--enable a,b --disable c` | `UPSUN_PHP_BIN`, `UPSUN_PHP_EXT_INSTALLER`, `UPSUN_PHP_CONF_DIR` |
-| `upsun-xdebug.sh` | `on [mode]`, `off` | `UPSUN_PHP_CONF_DIR`, `UPSUN_FPM_POOL_DIR`, `UPSUN_PHP_EXT_ENABLE`, `UPSUN_PGREP`, `UPSUN_KILL` |
+| `upsun-php-extensions.sh` | `--enable a,b --disable c` | `UPSUN_PHP_BIN`, `UPSUN_PHP_EXT_INSTALLER`, `UPSUN_PHP_EXT_ENABLE`, `UPSUN_PHP_EXT_DIR`, `UPSUN_PHP_CONF_DIR` |
+| `upsun-xdebug.sh` | `on [mode]`, `off` | `UPSUN_PHP_CONF_DIR`, `UPSUN_PHP_BIN`, `UPSUN_PHP_EXT_ENABLE`, `UPSUN_PGREP`, `UPSUN_KILL`, `UPSUN_RM`; writes `zzz-upsun-xdebug.ini` (unloads legacy Xdebug 2 on `off`) and reloads php-fpm |
 | `upsun-db-init.sh` | host, `mysql`/`pgsql`, base64 SQL | `UPSUN_DB_WAIT` (60), `UPSUN_MYSQL_CLIENT`, `UPSUN_PSQL_CLIENT`; exits 4 on timeout |
 | `upsun-install-supercronic.sh` | none | `SUPERCRONIC_VERSION` (0.2.49), `UPSUN_SUPERCRONIC_SHA1` (pinned per-arch SHA-1 override), `UPSUN_CURL`, `UPSUN_INSTALL_DIR`; exits 6 on checksum mismatch |
 | `upsun-install-node.sh` | major version | `UPSUN_CURL`, `UPSUN_NODE_PREFIX`, `UPSUN_NODE_BIN`, `UPSUN_NODE_DIST`; verifies against `SHASUMS256.txt`, exits 6 on mismatch |
@@ -580,9 +593,8 @@ All CLI, Node.js and Supercronic downloads pass `--retry 3` to curl for transien
 5xx, 408, 429 and timeout failures, including release lookups and checksum files.
 Nothing is installed when a checksum fails.
 
-Generated files include `/dev/shm/upsun-provisioned`, `/tmp/crontab`, the Xdebug
-PHP-FPM pool fragment, and PHP ini fragments for app config, Xdebug and
-Mailpit.
+Generated files include `/dev/shm/upsun-provisioned`, `/tmp/crontab`, and PHP ini
+fragments for app config, Xdebug and Mailpit.
 
 ## Warnings
 

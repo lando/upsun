@@ -56,7 +56,7 @@ module.exports = {
   parent: '_recipe',
   config: {
     proxy: {}, services: {}, tooling: {},
-    xdebug: false, build: [], run: [], mail: true, crons: false,
+    build: [], run: [], mail: true, crons: false,
   },
   builder: (parent, config) => class LandoUpsun extends parent {
     constructor(id, options = {}) {

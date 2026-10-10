@@ -81,11 +81,19 @@ lando exec app -- php -r 'mail("to@example.com", "leia-subject", "hello");'
 sleep 3
 curl -s http://mail.upsun-flex-php.lndo.site/api/v1/messages | grep leia-subject
 
-# Should toggle xdebug for web requests
-lando xdebug-on
+# Should load Xdebug with the IDE key from runtime.xdebug.idekey
 lando exec app -- curl -s http://app_nginx/ | grep "xdebug=debug"
+lando exec app -- curl -s http://app_nginx/ | grep "xdebug.idekey=LANDO"
+lando php -r 'echo implode(",", xdebug_info("mode"));' | grep debug
+
+# Should toggle the effective Xdebug mode for web requests and the CLI
 lando xdebug-off
 lando exec app -- curl -s http://app_nginx/ | grep "xdebug=off"
+lando php -r 'echo count(xdebug_info("mode"));' | grep 0
+lando xdebug-on develop,debug
+lando exec app -- curl -s http://app_nginx/ | grep "xdebug=.*develop"
+lando xdebug-on
+lando exec app -- curl -s http://app_nginx/ | grep "xdebug=debug"
 ```
 
 ## Destroy tests

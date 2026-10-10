@@ -12,6 +12,7 @@ docs:
       "docs/guides/adding-more-tooling": upsun/adding-more-tooling
       "docs/guides/external-access": upsun/external-access
       "docs/guides/manually-importing-databases": upsun/manually-importing-databases
+      "docs/guides/xdebug": upsun/xdebug
   config:
     recipes:
       "upsun": ./docs/config.md

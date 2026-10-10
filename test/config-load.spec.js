@@ -186,7 +186,7 @@ describe('config model loading', () => {
           additional_hosts: {},
           variables: {env: {APP_ENV: 'local'}, php: {memory_limit: '512M'}},
           dependencies: {php: {'composer/composer': '^2'}},
-          runtime: {extensions: [], disabled_extensions: []},
+          runtime: {extensions: [], disabled_extensions: [], xdebug: {idekey: null}},
           build: {flavor: 'composer'},
           timezone: null,
           raw: {
@@ -256,7 +256,7 @@ describe('config model loading', () => {
         },
         hooks: {build: '', deploy: '', post_deploy: ''}, crons: {}, workers: {}, operations: {},
         additional_hosts: {}, variables: {env: {}}, dependencies: {},
-        runtime: {extensions: [], disabled_extensions: []}, build: {}, timezone: null,
+        runtime: {extensions: [], disabled_extensions: [], xdebug: {idekey: null}}, build: {}, timezone: null,
         raw: {
           name: 'app', type: 'php:8.0',
           web: {locations: {'/': {root: 'web', passthru: '/index.php'}}},
@@ -399,7 +399,7 @@ describe('config model loading', () => {
     app.web.commands.should.eql({pre_start: null, start: null, post_start: 'echo post'});
     app.operations.should.eql({hello: {role: null, commands: {start: 'echo operation-ran'}}});
     app.additional_hosts.should.eql({'example.internal': '127.0.0.1'});
-    app.runtime.should.eql({extensions: ['xsl', 'blackfire'], disabled_extensions: []});
+    app.runtime.should.eql({extensions: ['xsl', 'blackfire'], disabled_extensions: [], xdebug: {idekey: null}});
     app.timezone.should.equal('Europe/Paris');
     model.applications.api.web.commands.start.should.equal('node server.js');
   });
@@ -418,6 +418,13 @@ describe('config model loading', () => {
     });
     app.runtime.extensions.should.eql(['redis', 'xsl']);
     model.warnings.should.eql([]);
+  });
+
+  it('normalizes runtime.xdebug.idekey to a string or null', () => {
+    const keyed = normalize({applications: {app: {type: 'php:8.4', runtime: {xdebug: {idekey: 'PHPSTORM'}}}}}, 'flex');
+    keyed.applications.app.runtime.xdebug.should.eql({idekey: 'PHPSTORM'});
+    const invalid = normalize({applications: {app: {type: 'php:8.4', runtime: {xdebug: {idekey: 42}}}}}, 'flex');
+    invalid.applications.app.runtime.xdebug.should.eql({idekey: null});
   });
 
   it('merges filtered composable PHP extension lists in raw-first order without mutating input', () => {
@@ -439,6 +446,7 @@ describe('config model loading', () => {
     app.runtime.should.eql({
       extensions: ['xsl', 'redis', 'intl'],
       disabled_extensions: ['xdebug', 'apcu', 'opcache'],
+      xdebug: {idekey: null},
     });
     app.composable.runtimes[0].options.should.eql({
       extensions: ['redis', 'intl', 'xsl'],
@@ -456,7 +464,7 @@ describe('config model loading', () => {
 
     const app = normalize(raw, 'flex').applications.app;
 
-    app.runtime.should.eql({extensions: [], disabled_extensions: []});
+    app.runtime.should.eql({extensions: [], disabled_extensions: [], xdebug: {idekey: null}});
     app.composable.runtimes[0].options.should.eql({});
     raw.should.eql(original);
   });
