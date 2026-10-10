@@ -30,11 +30,14 @@ config:
 
 `runtime.extensions: [xdebug]` also works: the extension is loaded with the
 mode off until one of the switches above, or `lando xdebug-on`, turns it on.
+Listing `xdebug` in `runtime.disabled_extensions` prevents build-time loading,
+even with an IDE key or `config.xdebug` set. You can still load it with `lando xdebug-on`.
 
 ## Connecting your IDE
 
-Set the IDE to listen on port `9003` and map the project root to `/app`
-(`/app/<source.root>` for a nested app). Lando's guides cover the client side:
+Set the IDE to listen on port `9003` and map the repository root to `/app`.
+If your IDE opens only a nested app, map that directory to `/app/<source.root>`.
+Lando's guides cover the client side:
 
 - [PhpStorm](https://docs.lando.dev/guides/lando-phpstorm.html)
 - [Visual Studio Code](https://docs.lando.dev/guides/lando-with-vscode.html)
@@ -57,6 +60,8 @@ lando xdebug-off
 
 The toggles take effect immediately for web requests and `lando php`. A
 `lando rebuild` goes back to the mode the configuration asks for.
+Xdebug 3 stays loaded with its mode off. On older images with Xdebug 2,
+`xdebug-off` unloads the extension instead; mode strings and `xdebug_info` require Xdebug 3.
 
 ## Changing Xdebug settings
 
@@ -82,6 +87,8 @@ config:
         php:
           xdebug.client_port: 9004
 ```
+
+These values override the generated mode and IDE key, but do not load the extension.
 
 Run `lando restart` after changing either; the generated `php.ini` is
 regenerated and mounted on every start.
