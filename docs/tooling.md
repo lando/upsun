@@ -117,7 +117,8 @@ lando xdebug-off
 `xdebug-on` loads the extension if needed, writes the mode to
 `/usr/local/etc/php/conf.d/zzz-upsun-xdebug.ini` and reloads PHP-FPM;
 `xdebug-off` sets the mode to `off` the same way. The container keeps the
-toggle until `lando rebuild`, which restores the starting mode. See
+toggle until `lando rebuild`, which restores the starting mode. On legacy
+Xdebug 2 images, `xdebug-off` unloads the extension because mode settings are unsupported. See
 [Debugging with Xdebug](./guides/xdebug.md) for IDE setup.
 
 ## Crons
