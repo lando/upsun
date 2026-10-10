@@ -2,7 +2,8 @@
 * Added readiness-only retries for busy Upsun environments every 30 seconds for up to ten minutes, with terminal countdowns and readable piped progress.
 * Loaded Xdebug with the app's `runtime.xdebug.idekey` like Upsun does; `config.xdebug` still forces it on or off.
 * Fixed `runtime.extensions: [xdebug]` failing the build and every later start: extensions the Lando PHP image ships disabled are now enabled instead of reinstalled.
-* Fixed `lando xdebug-on` having no effect because the container's `XDEBUG_MODE` overrode it; the toggles now apply to web requests and `lando php` alike, and `lando xdebug-off` keeps the extension loaded with the mode off.
+* Fixed `lando xdebug-on` having no effect because the container's `XDEBUG_MODE` overrode it; the toggles now apply to web requests and `lando php` alike. `lando xdebug-off` keeps Xdebug 3 loaded with the mode off and unloads legacy Xdebug 2.
+* Fixed explicitly disabled Xdebug being re-enabled during the PHP build and failed PHP inspection being reported as a successful toggle.
 * Added a [Debugging with Xdebug](https://docs.lando.dev/upsun/xdebug.html) guide.
 * Fixed workers inheriting the web application's start and pre-start commands.
 * Fixed static-site passthroughs such as `/index.html` proxying to an application with no start command.
