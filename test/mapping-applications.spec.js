@@ -144,6 +144,16 @@ describe('application mapping', () => {
     node.should.not.have.nested.property('overrides.environment');
   });
 
+  it('does not let the PHP plugin re-enable explicitly disabled Xdebug', () => {
+    const app = {...baseApp('php', '8.4'),
+      runtime: {extensions: [], disabled_extensions: ['xdebug'], xdebug: {idekey: 'PHPSTORM'}}};
+    for (const options of [{}, {xdebug: true}, {xdebug: 'develop,debug'}]) {
+      const service = mapApplication(app, model, options).services.app;
+      service.xdebug.should.equal(false);
+      service.build_as_root.should.include('/helpers/upsun-php-extensions.sh --disable xdebug');
+    }
+  });
+
   it('maps a PHP app with sidecar proxy, ini, env-setup and build steps', () => {
     const app = {
       ...baseApp('php', '8.4'),
