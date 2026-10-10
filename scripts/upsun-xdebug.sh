@@ -31,7 +31,8 @@ case "${1:-}" in
       exit 2
     fi
     mkdir -p "$CONF_DIR"
-    if ! "$PHP_BIN" -m | grep -qix xdebug; then
+    loaded="$("$PHP_BIN" -m)"
+    if ! printf '%s\n' "$loaded" | grep -qix xdebug; then
       "$EXT_ENABLE" xdebug
     fi
     printf 'xdebug.mode=%s\n' "$mode" > "$MODE_INI"
@@ -39,6 +40,12 @@ case "${1:-}" in
     lando_green "Xdebug enabled (mode $mode)"
     ;;
   off)
+    version="$("$PHP_BIN" -r 'echo phpversion("xdebug");')"
+    # Xdebug 2 ignores xdebug.mode; unload its bundled extension as the old toggle did.
+    if [[ "$version" = 2.* ]]; then
+      "${UPSUN_RM:-rm}" -f "$CONF_DIR/docker-php-ext-xdebug.ini"
+    fi
+    mkdir -p "$CONF_DIR"
     printf 'xdebug.mode=off\n' > "$MODE_INI"
     reload_fpm
     lando_green "Xdebug disabled"

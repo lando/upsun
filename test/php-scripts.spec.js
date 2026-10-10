@@ -175,6 +175,7 @@ describeLinux('PHP helper scripts', () => {
     const killLog = path.join(root, 'kill.log');
     const result = run(xdebug, ['off'], {
       UPSUN_PHP_CONF_DIR: conf,
+      UPSUN_PHP_BIN: path.join(fixtures, 'mock-php.sh'),
       UPSUN_PGREP: path.join(fixtures, 'mock-pgrep.sh'),
       UPSUN_KILL: path.join(fixtures, 'mock-kill.sh'),
       MOCK_FPM_PID: '42',
@@ -185,6 +186,90 @@ describeLinux('PHP helper scripts', () => {
     fs.readFileSync(path.join(conf, 'zzz-upsun-xdebug.ini'), 'utf8').should.equal('xdebug.mode=off\n');
     fs.existsSync(path.join(conf, 'docker-php-ext-xdebug.ini')).should.equal(true);
     fs.readFileSync(killLog, 'utf8').should.equal('-USR2 42\n');
+  });
+
+  it('xdebug off unloads Xdebug 2 because it has no mode setting', () => {
+    const root = temporaryRoot();
+    const ini = path.join(root, 'docker-php-ext-xdebug.ini');
+    const killLog = path.join(root, 'kill.log');
+    fs.writeFileSync(ini, 'zend_extension=xdebug\n');
+    const result = run(xdebug, ['off'], {
+      UPSUN_PHP_CONF_DIR: root,
+      UPSUN_PHP_BIN: path.join(fixtures, 'mock-php.sh'),
+      UPSUN_PGREP: path.join(fixtures, 'mock-pgrep.sh'),
+      UPSUN_KILL: path.join(fixtures, 'mock-kill.sh'),
+      MOCK_XDEBUG_VERSION: '2.9.8',
+      MOCK_FPM_PID: '42',
+      MOCK_KILL_LOG: killLog,
+    });
+
+    result.status.should.equal(0);
+    fs.existsSync(ini).should.equal(false);
+    fs.readFileSync(killLog, 'utf8').should.equal('-USR2 42\n');
+  });
+
+  it('xdebug off creates its configuration directory when absent', () => {
+    const conf = path.join(temporaryRoot(), 'conf');
+    const result = run(xdebug, ['off'], {
+      UPSUN_PHP_CONF_DIR: conf,
+      UPSUN_PHP_BIN: path.join(fixtures, 'mock-php.sh'),
+      UPSUN_PGREP: path.join(fixtures, 'mock-pgrep.sh'),
+      MOCK_FPM_PID: '',
+    });
+
+    result.status.should.equal(0);
+    fs.readFileSync(path.join(conf, 'zzz-upsun-xdebug.ini'), 'utf8').should.equal('xdebug.mode=off\n');
+  });
+
+  it('xdebug does not enable or report success when PHP module inspection fails', () => {
+    const root = temporaryRoot();
+    const enableLog = path.join(root, 'enable.log');
+    const result = run(xdebug, ['on'], {
+      UPSUN_PHP_CONF_DIR: root,
+      UPSUN_PHP_BIN: '/bin/false',
+      UPSUN_PHP_EXT_ENABLE: path.join(fixtures, 'mock-php-ext-enable.sh'),
+      UPSUN_PGREP: path.join(fixtures, 'mock-pgrep.sh'),
+      MOCK_FPM_PID: '',
+      MOCK_EXT_ENABLE_LOG: enableLog,
+    });
+
+    result.status.should.equal(1);
+    fs.existsSync(enableLog).should.equal(false);
+    fs.existsSync(path.join(root, 'zzz-upsun-xdebug.ini')).should.equal(false);
+    result.stdout.should.not.contain('GREEN Xdebug enabled');
+  });
+
+  it('xdebug stops before writing a mode when extension enabling fails', () => {
+    const root = temporaryRoot();
+    const result = run(xdebug, ['on'], {
+      UPSUN_PHP_CONF_DIR: root,
+      UPSUN_PHP_BIN: path.join(fixtures, 'mock-php.sh'),
+      UPSUN_PHP_EXT_ENABLE: path.join(fixtures, 'mock-php-ext-enable.sh'),
+      MOCK_PHP_MODULES: 'Core',
+      MOCK_EXT_ENABLE_LOG: path.join(root, 'enable.log'),
+      MOCK_EXT_ENABLE_FAIL: 'xdebug',
+    });
+
+    result.status.should.equal(1);
+    fs.existsSync(path.join(root, 'zzz-upsun-xdebug.ini')).should.equal(false);
+    result.stdout.should.not.contain('GREEN Xdebug enabled');
+  });
+
+  it('xdebug reports failure rather than success when php-fpm cannot reload', () => {
+    for (const action of ['on', 'off']) {
+      const root = temporaryRoot();
+      const result = run(xdebug, [action], {
+        UPSUN_PHP_CONF_DIR: root,
+        UPSUN_PHP_BIN: path.join(fixtures, 'mock-php.sh'),
+        UPSUN_PGREP: path.join(fixtures, 'mock-pgrep.sh'),
+        UPSUN_KILL: '/bin/false',
+        MOCK_PHP_MODULES: 'Core\nXdebug',
+        MOCK_FPM_PID: '42',
+      });
+
+      result.status.should.equal(1);
+      result.stdout.should.not.contain('GREEN Xdebug');
+    }
   });
 
   it('xdebug validates the mode and tolerates a stopped php-fpm', () => {
