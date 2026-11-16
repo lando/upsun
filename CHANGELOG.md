@@ -1,4 +1,6 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
+
+## v1.0.0-alpha.0 - [November 16, 2026](https://github.com/lando/upsun/releases/tag/v1.0.0-alpha.0)
 * Added readiness-only retries for busy Upsun environments every 30 seconds for up to ten minutes, with terminal countdowns and readable piped progress.
 * Loaded Xdebug with the app's `runtime.xdebug.idekey` like Upsun does; `config.xdebug` still forces it on or off.
 * Fixed `runtime.extensions: [xdebug]` failing the build and every later start: extensions the Lando PHP image ships disabled are now enabled instead of reinstalled.
