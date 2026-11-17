@@ -28,6 +28,8 @@ const appHook = (app, lando) => {
   });
   // Before core builds app.tasks at post-init 5, so a cold run uses the cwd route.
   app.events.on('post-init', 4, () => {
+    // New cores apply recipe toolingRoutes and merge the Landofile last; nothing to do here.
+    if (_.get(app, 'upsun.coreToolingRoutes')) return;
     const routes = _.get(app, 'upsun.toolingRouter');
     if (!Array.isArray(routes) || routes.length === 0) return;
     const selected = selectRoute(routes);
@@ -35,8 +37,13 @@ const appHook = (app, lando) => {
     // Unlike warm get-tasks, core get-tooling-tasks turns false entries into tasks.
     app.config.tooling = _.pickBy({...app.config.tooling, ...selected.tooling}, _.isObject);
   });
-  // Core reads this with a double JSON.parse and merges it over Landofile tooling on the warm path.
+  // Older cores read this with a double JSON.parse on the warm path.
   app.events.on('post-init', 9, () => {
+    // New cores read toolingRoutes from the recipe cache; drop the router older upsun versions wrote.
+    if (_.get(app, 'upsun.coreToolingRoutes')) {
+      lando.cache.remove(`${app.name}.tooling.router`);
+      return;
+    }
     const routes = _.get(app, 'upsun.toolingRouter');
     if (!Array.isArray(routes)) return;
     lando.cache.set(`${app.name}.tooling.router`, forCache(routes), {persist: true});

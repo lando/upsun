@@ -329,6 +329,23 @@ describe('app.js', () => {
     expect(app.config.tooling).to.deep.equal({composer: {cmd: 'custom', description: 'User composer'}});
   });
 
+  it('does not route or write the legacy cache on a core with recipe toolingRoutes', () => {
+    const {app, events} = makeApp('upsun');
+    const writes = [];
+    const removed = [];
+    app.upsun.coreToolingRoutes = true;
+    app.upsun.toolingRouter = [{route: process.cwd(), tooling: {php: false, node: {cmd: 'node'}}}];
+    app.config.tooling = {composer: {cmd: 'custom'}, node: false};
+    appHook(app, {cache: {
+      set: (key, value, options) => writes.push({key, value, options}),
+      remove: key => removed.push(key),
+    }});
+    events['post-init']();
+    expect(app.config.tooling).to.deep.equal({composer: {cmd: 'custom'}, node: false});
+    expect(writes).to.deep.equal([]);
+    expect(removed).to.deep.equal(['test.tooling.router']);
+  });
+
   for (const cached of [false, true]) {
     it(`replaces routed data choices when rebuilding ${cached ? 'cached' : 'cold'} tooling`, async () => {
       const _ = require('lodash');

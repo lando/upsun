@@ -266,14 +266,15 @@ module.exports = {
       }));
       const baseKeys = Object.keys(generated.get(closestApp) || {});
       const userKeys = Object.keys(userTooling);
-      const masked = appName => {
-        const commands = generated.get(appName) || {};
-        return router.routeTooling(commands, baseKeys, userKeys);
-      };
-      const toolingRouter = router.withRootFallback([...generated.keys()].map(appName => ({
+      const buildRoutes = toolingFor => router.withRootFallback([...generated.keys()].map(appName => ({
         route: path.resolve(root, model.applications[appName].sourceRoot || ''),
-        tooling: appName === closestApp ? {} : masked(appName),
+        tooling: appName === closestApp ? {} : toolingFor(appName),
       })), root, [path.resolve(root, model.applications[closestApp].sourceRoot || '')]);
+      // Cores with recipe toolingRoutes merge Landofile tooling last, so their routes keep Landofile names.
+      // Older cores ignore them and app.js applies this router with Landofile-owned names stripped instead.
+      const appTooling = appName => generated.get(appName) || {};
+      const toolingRouter = buildRoutes(appName => router.routeTooling(appTooling(appName), baseKeys, userKeys));
+      options.toolingRoutes = buildRoutes(appName => router.routeTooling(appTooling(appName), baseKeys, []));
 
       // Closest app first: Lando's default service (lando ssh, tooling) is the first v3 service.
       // An unsupported runtime maps to no service (only a warning), so there is nothing to put first.
@@ -284,10 +285,14 @@ module.exports = {
 
       app.upsun = {
         model, flavor, cli, closestApp, closestType, hostMap, branch, projectId, mail,
-        startCommands, toolingRouter, warnings: unique(warnings),
+        startCommands, warnings: unique(warnings),
       };
 
       super(id, options);
+
+      // Only cores that support recipe toolingRoutes copy the key; bare test parents have no config.
+      if (this.config && 'toolingRoutes' in this.config) app.upsun.coreToolingRoutes = true;
+      else app.upsun.toolingRouter = toolingRouter;
     }
   },
 };

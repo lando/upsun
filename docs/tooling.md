@@ -15,11 +15,11 @@ inside an app's `source.root` to target that app; anywhere else targets the
 closest app (or `config.app`). See
 [Multi-app projects](./config.md#multi-app-projects).
 
-In another app's directory (not the project root or the default app's directory),
-Lando uses that app's cached tooling. After adding or changing a Landofile command
-that shares a name with generated tooling, run `lando --clear` (or `lando start` /
-`lando rebuild`) before using it from there. At the project root and in the default
-app's directory, fresh Landofile tooling applies without refreshing the router.
+On a core that supports recipe `toolingRoutes`, Landofile tooling always wins in
+every app directory and needs no refresh. Older cores use another app's cached
+tooling when run from that app's directory; after adding or changing a Landofile
+command that shares a name with generated tooling there, run `lando --clear`
+(or `lando start` / `lando rebuild`) first.
 
 Generated commands are cached by Lando. After upgrading the plugin, run
 `lando --clear` if a command seems to be missing or behaving like the old
