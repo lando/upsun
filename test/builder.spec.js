@@ -19,10 +19,17 @@ class MockRecipe {
   }
 }
 
+class CoreRecipe extends MockRecipe {
+  constructor(id, config) {
+    super(id, config);
+    this.config = {...this.config, toolingRoutes: config.toolingRoutes};
+  }
+}
+
 const confRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'upsun-builder-'));
 after(() => fs.rmSync(confRoot, {recursive: true, force: true}));
 
-const build = (root, extra = {}, landoConfig = {}) => {
+const build = (root, extra = {}, landoConfig = {}, parent = MockRecipe) => {
   const app = {
     name: 'test',
     root,
@@ -36,7 +43,7 @@ const build = (root, extra = {}, landoConfig = {}) => {
     config: {recipe: 'upsun', config: landoConfig, tooling: extra.tooling || {}},
     upsun: {branch: 'feature-x'},
   };
-  const Recipe = recipe.builder(MockRecipe, recipe.config);
+  const Recipe = recipe.builder(parent, recipe.config);
   const instance = new Recipe('upsun', {...parseRecipeConfig('upsun', app), _app: app, ...extra.options});
   return {instance, app};
 };
@@ -722,6 +729,36 @@ describe('builders/upsun', () => {
     for (const entry of custom.app.upsun.toolingRouter) expect(entry.tooling).to.not.have.property('node');
     expect(custom.instance.config.tooling.node.cmd).to.equal('/helpers/upsun-exec.sh node');
     expect(custom.app.config.tooling.node.cmd).to.equal('custom');
+  });
+
+  it('passes unmasked routes to recipe cores while legacy cores keep the masked router', () => {
+    const root = fixture('flex-multiapp');
+    const landofile = {node: {service: 'web', cmd: 'custom'}};
+    const recorded = {};
+    class RecordingRecipe extends MockRecipe {
+      constructor(id, config) {
+        super(id, config);
+        recorded.toolingRoutes = config.toolingRoutes;
+      }
+    }
+    const legacy = build(root, {tooling: landofile}, {app: 'api'});
+    const frontend = routes => routes.find(entry => entry.route === path.join(root, 'frontend')).tooling;
+    const recordedBuild = build(root, {tooling: landofile}, {app: 'api'}, RecordingRecipe);
+    expect(recordedBuild.instance.config.tooling).to.have.keys(Object.keys(legacy.instance.config.tooling));
+    expect(recordedBuild.app.upsun.toolingRouter.map(entry => entry.route))
+      .to.deep.equal(legacy.app.upsun.toolingRouter.map(entry => entry.route));
+    expect(recordedBuild.app.upsun).not.to.have.property('coreToolingRoutes');
+    expect(recorded.toolingRoutes).to.be.an('array');
+    expect(frontend(recorded.toolingRoutes).node.cmd).to.include('node');
+    const modern = build(root, {tooling: landofile}, {app: 'api'}, CoreRecipe);
+    expect(frontend(legacy.app.upsun.toolingRouter)).not.to.have.property('node');
+    expect(frontend(modern.instance.config.toolingRoutes).node.cmd).to.include('node');
+    expect(frontend(modern.instance.config.toolingRoutes).python).to.equal(false);
+    expect(modern.instance.config.toolingRoutes.slice(0, 2)).to.deep.equal([
+      {route: root, tooling: {}}, {route: path.join(root, 'api'), tooling: {}},
+    ]);
+    expect(modern.app.upsun.coreToolingRoutes).to.equal(true);
+    expect(modern.app.upsun).not.to.have.property('toolingRouter');
   });
 
   it('keeps single-app routes empty and Landofile tooling out of the recipe cache', () => {
