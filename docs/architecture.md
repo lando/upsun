@@ -514,7 +514,7 @@ first SQL relationship service. For
 `layout: magento`, `pull`, `push` and `switch` are replaced with commands that
 exit 1 and point at `magento-cloud`.
 
-### Tooling router
+### Tooling routes
 
 The builder generates the full command set for every application, not only the
 closest one, and keeps the closest app's generated set plus recipe options in
@@ -522,31 +522,36 @@ closest one, and keeps the closest app's generated set plus recipe options in
 `<app>.recipe.cache` before applying Landofile tooling, so removed user commands
 cannot linger in the recipe cache.
 
-`lib/tooling-router.js` builds `app.upsun.toolingRouter` entries keyed by absolute
-`source.root`. The project root and closest app's source path carry `tooling: {}`,
-leaving core's recipe-cache + fresh Landofile merge untouched. Paths are deduplicated
-with those empty routes taking precedence, including when another app shares them.
-Other apps carry their generated commands minus names owned by Landofile tooling
-or recipe options. `routeTooling` adds `false` only for closest-app generated commands
-that the routed app lacks and the user does not own. Commands generated only for
-other non-closest apps need no markers because they are not in the recipe base.
+`lib/tooling-router.js` builds entries keyed by absolute `source.root`. The project
+root and closest app's source path carry `tooling: {}`, leaving fresh Landofile
+commands in charge. Paths are deduplicated with those empty routes taking
+precedence, including when another app shares them. Other apps carry their
+generated commands, with `false` for closest-app generated commands they lack.
+Commands generated only for other non-closest apps need no markers because they
+are not in the recipe base.
 
-`app.js` applies the router twice. At `post-init` 4 (before core builds
-`app.tasks` at 5) it replaces route-owned commands with those from the closest
-ancestor of `process.cwd()`. Whole-command replacement prevents another app's
-relationship or mount choices from surviving an array merge on the live path.
-It removes non-object entries even for empty routes before
-core creates tasks, so a cold run already targets the cwd app. At `post-init` 9
-it persists `JSON.stringify(routes)` to the
-`<app>.tooling.router` cache for core's warm path, which reads that cache with
-a double `JSON.parse` before the app is initialized. Interactive functions do
-not survive the cache; app-level commands reload them during init.
-Core deep-merges the selected cached route over recipe and Landofile tooling on
-the warm path. After adding or changing a Landofile command that collides with
-generated tooling, refresh with `lando --clear`, `lando start` or `lando rebuild`
-before using it in another app's directory. Root and closest-app routes stay empty
-and need no refresh for those Landofile changes.
-`post-uninstall` removes the key, and `clearToolingCaches` drops both
+The builder always passes the unmasked entries to `super()` as
+`options.toolingRoutes`. Cores that copy recipe `toolingRoutes` (detected with
+`'toolingRoutes' in this.config` after `super()`) select the closest route
+themselves, apply it shallow over the recipe tooling and merge Landofile tooling
+last on both the live and warm paths. Landofile tooling therefore always wins, in
+every app directory, with no refresh; `app.js` does not route and `post-init` 9
+removes a stale `<app>.tooling.router` cache instead of writing one.
+
+Older cores ignore `options.toolingRoutes`. For them the builder keeps a masked
+`app.upsun.toolingRouter` (Landofile-owned names removed) and `app.js` applies it
+twice. At `post-init` 4 (before core builds `app.tasks` at 5) it replaces
+route-owned commands with those from the closest ancestor of `process.cwd()` and
+removes non-object entries even for empty routes. Whole-command replacement
+prevents another app's relationship or mount choices from surviving an array
+merge. At `post-init` 9 it persists `JSON.stringify(routes)` to
+`<app>.tooling.router` for core's double-`JSON.parse` warm path. Interactive
+functions do not survive the cache; app-level commands reload them during init.
+After adding or changing a colliding Landofile command on an older core, refresh
+with `lando --clear`, `lando start` or `lando rebuild` before using it from
+another app's directory; root and closest-app routes need no refresh.
+
+`post-uninstall` removes the router key, and `clearToolingCaches` drops both
 `<app>.recipe.cache` and `<app>.tooling.router` whenever a token is saved or
 rejected (`post-auth`, `post-pull`, `post-push`, `post-switch`, the
 `cli-*-answers` hooks) so the warm path cannot keep a stale token or option set.

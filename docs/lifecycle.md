@@ -10,15 +10,14 @@ description: What happens when an Upsun project starts under Lando.
 2. **Map.** Each application and service is mapped to a Lando service; routes
    become proxy entries; tooling is generated for every app. The closest app's
    generated commands plus recipe options go into `<app>.recipe.cache`, without
-   Landofile tooling. The per-directory router has empty root and closest-app
-   entries, so fresh Landofile commands win there. Other apps get generated commands
-   minus user-owned names, with `false` only for missing closest-app commands the
-   user does not own. Duplicate paths favor the empty root/closest entries.
-   At `post-init` 4 the selected route is shallow-merged and non-object commands are
-   removed, even for empty routes, before core builds tasks at 5. At 9 the router is
-   double-JSON cached in `<app>.tooling.router` for core's warm path. After adding or
-   changing a colliding Landofile command, run `lando --clear`, `lando start` or
-   `lando rebuild` before using it from another app's directory.
+   Landofile tooling. Per-directory routes carry empty root and closest-app
+   entries and the other apps' generated commands. On a core that supports recipe
+   `toolingRoutes`, core applies the closest route and merges Landofile tooling
+   last, so Landofile commands always win without a refresh. On older cores
+   `app.js` applies the masked routes at `post-init` 4 and caches
+   `<app>.tooling.router` at 9 for core's warm path; after changing a colliding
+   Landofile command there, run `lando --clear`, `lando start` or `lando rebuild`
+   before using it from another app's directory.
 3. **Build** (first start and `lando rebuild`).
    - PHP root steps: install `jq`, configure requested extensions, link a root
      `php.ini`, install a secondary Node.js runtime when declared, configure
