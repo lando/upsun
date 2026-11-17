@@ -1,4 +1,5 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
+* Changed per-directory tooling routing to use core's recipe `toolingRoutes` contract where available, so Landofile tooling always wins without `lando --clear`; older cores keep the cached router.
 
 ## v1.0.0-alpha.0 - [November 16, 2026](https://github.com/lando/upsun/releases/tag/v1.0.0-alpha.0)
 * Added readiness-only retries for busy Upsun environments every 30 seconds for up to ten minutes, with terminal countdowns and readable piped progress.
